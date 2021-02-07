@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD 17)
 #        )
 
 
-add_executable(avi_parser main.cpp)
+add_executable(avi_parser main.cpp Video.cpp Video.h Matrix.cpp Matrix.h Avi.cpp Avi.h IO.cpp IO.h)
 #
 #target_link_libraries(${PROJECT_NAME}
 #        PkgConfig::LIBAV

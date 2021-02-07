@@ -1,22 +1,19 @@
-#include <iostream>
-#include <fstream>
-#include <vector>
 #include <array>
+#include <fstream>
+#include <iostream>
+#include "Avi.h"
 
-typedef uint32_t DWORD;
 
 
-typedef uint8_t WORD;
-typedef std::array<uint8_t, 4> Fourcc;
-
+#if FIRST_TRY
 
 #pragma pack(push, r1, 1)
 
 struct FOURCC {
-    WORD c_1;
-    WORD c_2;
-    WORD c_3;
-    WORD c_4;
+    BYTE c_1;
+    BYTE c_2;
+    BYTE c_3;
+    BYTE c_4;
 };
 
 typedef struct _avimainheader {
@@ -54,55 +51,43 @@ typedef struct {
 
 const Fourcc LIST = {'L', 'I', 'S', 'T'};
 
-//struct __attribute__ ((packed)) Chunk {
 
-struct Chunk {
+struct Chunk_s {
     Fourcc id;
     DWORD size;
-    std::vector<char> data;
+    std::vector<BYTE> data;
 };
 
-struct List {
+struct List_s {
     Fourcc name;
     DWORD size;
     Fourcc type;
     std::vector<char> data;
 };
 
-
-struct Avi {
+struct FileHeader {
+    BYTE name_1;
+    BYTE name_2;
+    BYTE name_3;
+    BYTE name_4;
     DWORD size;
-    WORD filetype[4];
-    // data Chunk | List
+    BYTE filetype_1;
+    BYTE filetype_2;
+    BYTE filetype_3;
+    BYTE filetype_4;
 };
-
-//struct __attribute__ ((packed)) File {
-struct File {
-    WORD name_1;
-    WORD name_2;
-    WORD name_3;
-    WORD name_4;
-    DWORD size;
-    WORD filetype_1;
-    WORD filetype_2;
-    WORD filetype_3;
-    WORD filetype_4;
-};
-
 
 #pragma pack(pop, r1)
-
-
-void show_list(List l) {
+void show_list(List_s l) {
     std::cout << "( " << l.name.data() << " size: " << l.size << " type: " << l.type.data() << ")" << std::endl;
 }
 
-void show_chunk(Chunk c) {
-    std::cout << "( Chunk id: " << c.id.data() << " size: " << c.size << ")" << std::endl;
+void show_chunk(Chunk_s c) {
+    std::cout << "( Chunk_s id: " << c.id.data() << " size: " << c.size << ")" << std::endl;
 }
 
-File read_header(std::fstream &file) {
-    File f;
+FileHeader read_header(std::fstream &file) {
+    FileHeader f;
     file.read((char *) &f, sizeof(f));
     return f;
 }
@@ -122,15 +107,15 @@ DWORD read_dword(std::fstream &file) {
     return f;
 }
 
-Chunk read_chunk_header(std::fstream &file, Fourcc name) {
-    Chunk c;
+Chunk_s read_chunk_header(std::fstream &file, Fourcc name) {
+    Chunk_s c;
     c.id = name;
     c.size = read_dword(file);
     return c;
 };
 
-List read_list_header(std::fstream &file, Fourcc name) {
-    List f;
+List_s read_list_header(std::fstream &file, Fourcc name) {
+    List_s f;
     f.name = name;
     f.size = read_dword(file);
     f.type = read_fourcc(file);
@@ -143,13 +128,11 @@ void read_stream_header(std::fstream &file) {
 }
 
 void read_format_header(std::fstream &file) {
-
 }
 
 void read_list(std::fstream &file, Fourcc name);
 
 void read_chunk(std::fstream &file, Fourcc name);
-
 
 const Fourcc STRF = {'s', 't', 'r', 'f'};
 const Fourcc STRH = {'s', 't', 'r', 'h'};
@@ -241,15 +224,14 @@ void read_avi() {
         }
         position++;
     }
-
 }
+
+#endif
 
 int main() {
     std::fstream file;
+    file.open("./out.avi", std::ios::in | std::ios::binary);
 
-    std::cout << sizeof(File) << std::endl;
-
-    file.open("./drop.avi", std::ios::in | std::ios::binary);
-
-    read_avi();
+    Avi avi;
+    avi.parse(file);
 }
