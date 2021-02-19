@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include "Avi.h"
+#include "IO.h"
 
 
 
@@ -76,8 +77,8 @@ struct FileHeader {
     BYTE filetype_3;
     BYTE filetype_4;
 };
-
 #pragma pack(pop, r1)
+
 void show_list(List_s l) {
     std::cout << "( " << l.name.data() << " size: " << l.size << " type: " << l.type.data() << ")" << std::endl;
 }
@@ -230,7 +231,12 @@ void read_avi() {
 
 int main() {
     std::fstream file;
-    file.open("./out.avi", std::ios::in | std::ios::binary);
+    file.open("./stars.avi", std::ios::in | std::ios::binary);
+
+
+    std::vector<BYTE> data;
+
+    data.data();
 
     Avi avi;
     avi.parse(file);

@@ -5,6 +5,7 @@
 #include "Avi.h"
 #include <cassert>
 #include <fstream>
+#include <iostream>
 
 const Fourcc STRF = {'s', 't', 'r', 'f'};
 const Fourcc STRH = {'s', 't', 'r', 'h'};
@@ -43,6 +44,7 @@ void List::parse(std::fstream &file) {
     this->type_ = IO::get_fourcc(file);
     size_t i = this->get_size();
     while (i) {
+        std::clog << "size left: "  << i << std::endl;
         auto fourcc = IO::get_fourcc(file);
         Element *element;
         if (fourcc == LIST) {
@@ -81,6 +83,24 @@ void Chunk::parse(std::fstream &file) {
     //        data_.push_back(element);
     //    }
 }
+
+void RawData::add_child(Element *element) {
+    assert(false);
+}
+void RawData::parse(std::fstream &file) {
+    size_t i = this->get_size();
+    while (i) {
+        this->data_.push_back(IO::get_byte(file));
+        i --;//= 8;
+    }
+}
+
+
+
+/// -----------------------------------------------
+/// seters and geters dont need to worry about them
+/// ------------------------------------------------
+
 void List::add_child(Element *element) {
     data_.push_back(element);
 }
@@ -110,17 +130,6 @@ Fourcc Chunk::get_id() {
 }
 void Chunk::set_id(const Fourcc &fourcc) {
     this->id = fourcc;
-}
-
-void RawData::add_child(Element *element) {
-    assert(false);
-}
-void RawData::parse(std::fstream &file) {
-    size_t i = this->get_size();
-    while (i) {
-        this->data_.push_back(IO::get_byte(file));
-        i--;
-    }
 }
 void RawData::set_size(size_t size) {
     this->size_ = size;
