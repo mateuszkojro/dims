@@ -6,10 +6,12 @@ class Simplex:
     def __init__(self, A, b, c):
         self.A = np.array(A, dtype='float64')
         # we could append an identity matrix there
-        self.A = np.hstack((self.A, [[1, 0, 0], [0, 1, 0], [0, 0, 1]]))
+        size = self.A.shape[0]
+        self.A = np.hstack((self.A, np.identity(size)))
         self.b = np.array(b, dtype='float64')
         self.c = np.array(c, dtype='float64')
-        self.c = np.hstack((self.c, [[0, 0, 0]]))
+        self.c = np.hstack(
+            (self.c, np.zeros(size).reshape((1, size))))
 
     def optimize(self):
         min_addr = np.argmin(self.c)
