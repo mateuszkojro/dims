@@ -4,143 +4,118 @@
 
 #include "Avi.h"
 #include <cassert>
+#include <cstddef>
 #include <fstream>
 #include <iostream>
+#include <ostream>
+#include <string>
 
+// some names of chunks
 const Fourcc STRF = {'s', 't', 'r', 'f'};
 const Fourcc STRH = {'s', 't', 'r', 'h'};
+const Fourcc JUNK = {'J', 'U', 'N', 'K'};
 const Fourcc AVIH = {'a', 'v', 'i', 'h'};
 const Fourcc LIST = {'L', 'I', 'S', 'T'};
 const Fourcc IDX1 = {'I', 'D', 'X', '1'};
 
 void Avi::parse(std::fstream &file) {
-    auto riff = IO::get_fourcc(file);
-    log(riff);
-    this->size_ = IO::get_dword(file);
-    log(this->size_);
-    auto avi = IO::get_fourcc(file);
-    log(avi);
-    List *hrdl = new List;
-    List *movi = new List;
+  auto riff = IO::get_fourcc(file);
+  log(riff);
+  this->size_ = IO::get_dword(file);
+  log(this->size_);
+  auto avi = IO::get_fourcc(file);
+  log(avi);
+  List *hrdl = new List;
+  List *movi = new List;
 
-    // parsing info headers of a file
+  // parsing info headers of a file
 
-    hrdl->set_id(IO::get_fourcc(file));
-    assert(hrdl->get_id() == LIST);
-    hrdl->set_size(IO::get_dword(file));
-    log(hrdl->get_size());
-    hrdl->parse(file);
-    // parsing hrdl part of the file
+  hrdl->set_id(IO::get_fourcc(file));
+  assert(hrdl->get_id() == LIST);
+  hrdl->set_size(IO::get_dword(file));
+  log(hrdl->get_size());
+  std::cout << "Begin parsing" << std::endl;
+  hrdl->parse(file);
 
-    movi->set_id(IO::get_fourcc(file));
-    assert(movi->get_id() == LIST);
-    movi->set_size(IO::get_dword(file));
-    log(movi->get_size());
-    movi->parse(file);
+  // parsing hrdl part of the file
 
-    this->data_ = {hrdl, movi};
+  movi->set_id(IO::get_fourcc(file));
+  movi->set_size(IO::get_dword(file));
+  log(movi->get_size());
+  movi->parse(file);
+
+  this->data_ = {hrdl, movi};
 }
+
 void List::parse(std::fstream &file) {
-    this->type_ = IO::get_fourcc(file);
-    size_t i = this->get_size();
-    while (i) {
-        std::clog << "size left: "  << i << std::endl;
-        auto fourcc = IO::get_fourcc(file);
-        Element *element;
-        if (fourcc == LIST) {
-            element = new List;
-        } else {
-            element = new Chunk;
-            element->set_id(fourcc);
-            //            element->set_id(IO::get_fourcc(file));
-        }
-        element->set_size(IO::get_dword(file));
-        i -= element->get_size();
-        element->parse(file);
-        data_.push_back(element);
+
+  this->type_ = IO::get_fourcc(file);
+  
+  long int left = this->get_size();
+  
+  while (left > 0) {
+    auto fourcc = IO::get_fourcc(file);
+
+    Element *element;
+
+    // list packet have "LIST" fourcc everything else is a CHUNK
+    if (fourcc == LIST) {
+      element = new List;
+    } else {
+      element = new Chunk;
+      element->set_id(fourcc);
+
+      // "JUNK" means some padding in binary file we can skip it completly
+      if (element->get_id() == JUNK) {
+        size_t skip_size = IO::get_dword(file);
+        IO::skip(file, skip_size);
+        continue;
+      }
     }
+
+    // get the size of the next element and set it
+    element->set_size(IO::get_dword(file));
+
+    // decrease number of bytes left to read
+    left -= element->get_size();
+
+    // parse next symbol
+    element->parse(file);
+    
+    data_.push_back(element);
+  }
 }
+
 void Chunk::parse(std::fstream &file) {
-    if (this->get_id() == IDX1) return;
-    size_t i = this->get_size();
-    RawData *data = new RawData;
-    data->set_size(i);
-    data->parse(file);
-    log(data->get_size());
-    log(data->data_.size());
-    //    while (i) {
-    //        auto fourcc = IO::get_fourcc(file);
-    //        Element *element;
-    //        if (fourcc == LIST) {
-    //            element = new List;
-    //        } else {
-    //            element = new RawData;
-    //            //            element->set_id(IO::get_fourcc(file));
-    //        }
-    //        element->set_size(IO::get_dword(file));
-    //        i -= element->get_size();
-    //        element->parse(file);
-    //        data_.push_back(element);
-    //    }
-}
+  long int left = this->get_size();
 
-void RawData::add_child(Element *element) {
-    assert(false);
+  // read data to the end of the chunk
+  while (left > 0) {
+    this->data_.push_back(IO::get_byte(file));
+    left--;
+  }
 }
-void RawData::parse(std::fstream &file) {
-    size_t i = this->get_size();
-    while (i) {
-        this->data_.push_back(IO::get_byte(file));
-        i --;//= 8;
-    }
-}
-
-
 
 /// -----------------------------------------------
 /// seters and geters dont need to worry about them
 /// ------------------------------------------------
 
-void List::add_child(Element *element) {
-    data_.push_back(element);
-}
-size_t List::get_size() {
-    return size_;
-}
-void List::set_size(size_t size) {
-    size_ = size;
-}
-void List::set_id(const Fourcc &id) {
-    type_ = id;
-}
-Fourcc List::get_id() {
-    return this->type_;
-}
-void Chunk::add_child(Element *element) {
-    data_.push_back(element);
-}
-void Chunk::set_size(size_t size) {
-    this->size = size;
-}
-size_t Chunk::get_size() {
-    return this->size;
-}
-Fourcc Chunk::get_id() {
-    return this->id;
-}
-void Chunk::set_id(const Fourcc &fourcc) {
-    this->id = fourcc;
-}
-void RawData::set_size(size_t size) {
-    this->size_ = size;
-}
-size_t RawData::get_size() {
-    return this->size_;
-}
-Fourcc RawData::get_id() {
-    assert(false);
-    return Fourcc();
-}
-void RawData::set_id(const Fourcc &fourcc) {
-    assert(false);
-}
+void List::add_child(Element *element) { data_.push_back(element); }
+
+size_t List::get_size() { return size_; }
+
+void List::set_size(size_t size) { size_ = size; }
+
+void List::set_id(const Fourcc &id) { type_ = id; }
+
+Fourcc List::get_id() { return this->type_; }
+
+void Chunk::add_child(Element *element) { assert(false); }
+
+void Chunk::set_size(size_t size) { this->size = size; }
+
+size_t Chunk::get_size() { return this->size; }
+
+Fourcc Chunk::get_id() { return this->id; }
+
+void Chunk::set_id(const Fourcc &fourcc) { this->id = fourcc; }
