@@ -1,6 +1,6 @@
-//
-// Created by mateusz on 17.02.2021.
-//
+/*
+ * Wraper class around OpenCL calls to make using it feasible in larger proj.
+ */
 
 #ifndef OPENCL_OPENCLPROGRAM_H
 #define OPENCL_OPENCLPROGRAM_H
@@ -38,7 +38,7 @@ static OpenclSource load_source(std::string path) {
     /* Load the source code containing the kernel*/
     fp = fopen(path.c_str(), "r");
     if (!fp) {
-        fprintf(stderr, "Failed to load kernel.\n");
+        fprintf(stderr, "Failed to load kernel source.\n");
         exit(1);
     }
 

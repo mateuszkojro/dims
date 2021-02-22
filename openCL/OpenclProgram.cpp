@@ -36,7 +36,7 @@ void OpenclProgram::create_context() {
     cl_int err = 0;
     /* Create OpenCL context */
     context = clCreateContext(NULL, 1, &device_id_, NULL, NULL, &err);
-    printf("context: %s\n", context);
+    printf("context: %s\n",(char *) context);
     assert(!err);
     context_ = context;
 }
