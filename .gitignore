@@ -1,3 +1,4 @@
 # Project exclude paths
 /cmake-build-debug/
-openCL/cmake-build-debug
+openCL/build
+my_avi_parser/build
