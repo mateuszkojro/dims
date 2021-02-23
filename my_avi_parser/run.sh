@@ -1,4 +1,4 @@
 mkdir build >> /dev/null
 cd build
 cmake .. 
- make && ./avi_parser
+ make && time ./avi_parser
