@@ -37,7 +37,7 @@ class TestSimplexExmpl1(unittest.TestCase):
             [10.0,	1.5,	0.0,	1.0,	-0.5,	1.0,	0.0	],
             [0.0,	1.0,	0.0,	-1.0,	-1.0,	0.0,	1.0	]
         ])
-        s = my.Simplex(A, b, c)
+        s = my.Simplex(A, b, c, "MIN")
         pass1 = s.optimize()
         self.assertTrue(np.array_equiv(pass1, test_itr_1))
 
@@ -52,7 +52,7 @@ class TestSimplexExmpl1(unittest.TestCase):
             [10.0, 0.0, 0.0, 2.5, 1.0, 1.0, -1.5],
             [0.0, 1.0, 0.0, -1.0, -1.0,	0.0, 1.0],
         ])
-        s = my.Simplex(A, b, c)
+        s = my.Simplex(A, b, c, "MIN")
         s.optimize()
         pass2 = s.optimize()
         self.assertTrue(np.array_equiv(pass2, test_itr_2))
@@ -61,7 +61,7 @@ class TestSimplexExmpl1(unittest.TestCase):
         A = np.array([[1, 2, 2], [2, 1, 2], [2, 2, 1]])
         b = np.array([0, 20, 20, 20])
         c = np.array([-10, -12, -12])
-        s = my.Simplex(A, b, c)
+        s = my.Simplex(A, b, c, "MIN")
         result = s.simplex(4)
         self.assertTrue(np.array_equiv(result, np.array([4., 4., 4.])))
 
@@ -69,7 +69,7 @@ class TestSimplexExmpl1(unittest.TestCase):
         A = np.array([[1, 2, 2], [2, 1, 2], [2, 2, 1]])
         b = np.array([0, 20, 20, 20])
         c = np.array([-10, -12, -12])
-        s = my.Simplex(A, b, c)
+        s = my.Simplex(A, b, c, "MIN")
         start = time.perf_counter()
         _ = s.simplex(4)
         stop = time.perf_counter()
