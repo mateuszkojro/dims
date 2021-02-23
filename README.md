@@ -20,17 +20,17 @@ _For running OpenCL_
 
 _For running video_analyzer_
 
-# FFmpeg >= 2.0
+1. FFmpeg >= 2.0
 
 _with following versions of FFMpeg libs_
 
-1. libavformat >= 54.x.x
-1. libavcodec >= 54.x.x
-1. libavfilter >= 3.x.x
-1. libavutil >= 51.x.x
-1. libswscale >= 2.x.x
-1. libswresample >= 0.x.x
-1. libpostproc >= 52.x.x
+- libavformat >= 54.x.x
+- libavcodec >= 54.x.x
+- libavfilter >= 3.x.x
+- libavutil >= 51.x.x
+- libswscale >= 2.x.x
+- libswresample >= 0.x.x
+- libpostproc >= 52.x.x
 
 ### Python
 
