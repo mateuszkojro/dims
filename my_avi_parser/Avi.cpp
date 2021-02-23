@@ -88,8 +88,10 @@ void List::parse(std::fstream &file) {
 
 void Chunk::parse(std::fstream &file) {
   long int left = this->get_size();
+  this->data_.resize(left);
 
   // read data to the end of the chunk
+  // ofc it should be read whole and stored that way
   while (left > 0) {
     this->data_.push_back(IO::get_byte(file));
     left--;
