@@ -26,7 +26,7 @@ def show_img(path, resolution):
 
 
 def show_diff(path1, path2, resolution):
-    img1 = get_img(read_file(path2), resolution)
+    img1 = get_img(read_file(path1), resolution)
     img2 = get_img(read_file(path2), resolution)
 
     result = img2 - img1
