@@ -1,0 +1,3 @@
+[submodule "video_analyzer/lib/avcpp"]
+	path = video_analyzer/lib/avcpp
+	url = https://github.com/h4tr3d/avcpp
