@@ -23,7 +23,7 @@ public:
   virtual void parse(std::fstream &) = 0;
   virtual void set_size(size_t) = 0;
   virtual size_t get_size() = 0;
-  virtual Fourcc get_id() = 0;
+  virtual const Fourcc& get_id() = 0;
   virtual void set_id(const Fourcc &) = 0;
 };
 
@@ -57,7 +57,7 @@ public:
   void add_child(Element *element) override;
   void parse(std::fstream &) override;
 
-  Fourcc get_id() override;
+  const Fourcc& get_id() override;
   void set_id(const Fourcc &name) override;
 
 private:
@@ -82,7 +82,7 @@ public:
   void set_size(size_t size) override;
   size_t get_size() override;
 
-  Fourcc get_id() override;
+  const Fourcc& get_id() override;
   void set_id(const Fourcc &fourcc) override;
 
 private:

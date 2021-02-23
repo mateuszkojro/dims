@@ -50,9 +50,9 @@ void Avi::parse(std::fstream &file) {
 void List::parse(std::fstream &file) {
 
   this->type_ = IO::get_fourcc(file);
-  
+
   long int left = this->get_size();
-  
+
   while (left > 0) {
     auto fourcc = IO::get_fourcc(file);
 
@@ -81,7 +81,7 @@ void List::parse(std::fstream &file) {
 
     // parse next symbol
     element->parse(file);
-    
+
     data_.push_back(element);
   }
 }
@@ -108,7 +108,7 @@ void List::set_size(size_t size) { size_ = size; }
 
 void List::set_id(const Fourcc &id) { type_ = id; }
 
-Fourcc List::get_id() { return this->type_; }
+const Fourcc &List::get_id() { return this->type_; }
 
 void Chunk::add_child(Element *element) { assert(false); }
 
@@ -116,6 +116,6 @@ void Chunk::set_size(size_t size) { this->size = size; }
 
 size_t Chunk::get_size() { return this->size; }
 
-Fourcc Chunk::get_id() { return this->id; }
+const Fourcc &Chunk::get_id() { return this->id; }
 
 void Chunk::set_id(const Fourcc &fourcc) { this->id = fourcc; }

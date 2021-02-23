@@ -6,51 +6,41 @@
 #include <iostream>
 
 struct FOURCC {
-    BYTE c_1;
-    BYTE c_2;
-    BYTE c_3;
-    BYTE c_4;
+  BYTE c_1;
+  BYTE c_2;
+  BYTE c_3;
+  BYTE c_4;
 };
 
 DWORD IO::get_dword(std::fstream &file) {
-    DWORD w;
-    file.read((char *) &w, sizeof(w));
-    return w;
+  DWORD w;
+  file.read((char *)&w, sizeof(w));
+  return w;
 }
 WORD IO::get_word(std::fstream &file) {
-    DWORD d;
-    file.read((char *) &d, sizeof(d));
-    return d;
+  DWORD d;
+  file.read((char *)&d, sizeof(d));
+  return d;
 }
 BYTE IO::get_byte(std::fstream &file) {
-    BYTE b;
-    file.read((char *) &b, sizeof(b));
-    return b;
+  BYTE b;
+  file.read((char *)&b, sizeof(b));
+  return b;
 }
 Fourcc IO::get_fourcc(std::fstream &file) {
-    FOURCC f = {};
-    file.read((char *) &f, sizeof(f));
-    Fourcc arr;
-    arr = {f.c_1, f.c_2, f.c_3, f.c_4};
-    log(arr);
-    return arr;
+  FOURCC f = {};
+  file.read((char *)&f, sizeof(f));
+  Fourcc arr;
+  arr = {f.c_1, f.c_2, f.c_3, f.c_4};
+  log(arr);
+  return arr;
 }
 void IO::skip(std::fstream &file, size_t how_far) {
-    BYTE b;
-    for (size_t i = 0; i < how_far; i++) {
-        b = IO::get_byte(file);
-        std::clog << b << std::endl;
-    }
+  file.ignore(how_far);
 }
-void log(Fourcc fcc) {
-    std::clog << "Fourcc: "
-              << "\""
-              << fcc[0]
-              << fcc[1]
-              << fcc[2]
-              << fcc[3]
-              << "\"" << std::endl;
+void log(const Fourcc& fcc) {
+  std::clog << "Fourcc: "
+            << "\"" << fcc[0] << fcc[1] << fcc[2] << fcc[3] << "\""
+            << std::endl;
 }
-void log(size_t value) {
-    std::clog << "value: " << value << std::endl;
-}
+void log(size_t value) { std::clog << "value: " << value << std::endl; }

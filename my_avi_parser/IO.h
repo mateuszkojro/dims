@@ -16,7 +16,7 @@ typedef uint16_t WORD;
 typedef std::array<BYTE, 4> Fourcc;
 
 
-void log(Fourcc fcc);
+void log(const Fourcc& fcc);
 void log(size_t value);
 
 class IO {
