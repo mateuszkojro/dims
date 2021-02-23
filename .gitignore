@@ -2,3 +2,4 @@
 /cmake-build-debug/
 openCL/build
 my_avi_parser/build
+video_analyzer/build
