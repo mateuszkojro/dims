@@ -1,5 +1,13 @@
 # Collection of scripts and programs for DIMS project
 
+## How to download 
+
+you need to have git installed then just
+
+```bash
+git clone --recurse-submodules https://github.com/mateuszkojro/dims
+```
+
 ## How to run?
 
 Every subproject has an `run.sh` and optionaly `test.sh` scripts making it easy
