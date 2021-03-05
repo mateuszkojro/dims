@@ -10,190 +10,179 @@
 #include <set>
 #include <string>
 
-#include "audioresampler.h"
+// #include "audioresampler.h"
 #include "av.h"
-#include "avutils.h"
-#include "codec.h"
-#include "ffmpeg.h"
-#include "packet.h"
-#include "videorescaler.h"
+// #include "avutils.h"
+// #include "codec.h"
+// #include "ffmpeg.h"
+// #include "packet.h"
+// #include "videorescaler.h"
 
 // API2
 #include "codec.h"
 #include "codeccontext.h"
 #include "format.h"
 #include "formatcontext.h"
+#include "Logger.h"
+#include "debug.h"
 
 using namespace std;
 using namespace av;
+using namespace mk;
 
-#define SAVE_FRAMES 0
+#define SAVE_FRAMES 1
 
 int main(int argc, char **argv) {
-  if (argc < 2) {
-    std::cerr << "Give a path to file as 1st arg" << std::endl;
-    return 1;
-  }
 
-  av::init();
-  av::setFFmpegLoggingLevel(AV_LOG_DEBUG);
+    // Initialize my logger library
+    mk::Logger::Config config = {
+            .show_line = true,
+            .show_file = true,
+            .show_func = true,
+            .to_file = false
+    };
 
-  string path{argv[1]};
+    mk::Logger::init(mk::Logger::all, config);
 
-  ssize_t video_stream_id = -1;
-  VideoDecoderContext decoder_context;
-  Stream stream;
-  error_code ec;
+    av::init();
 
-  int count = 0;
+    av::setFFmpegLoggingLevel(AV_LOG_DEBUG);
 
-  {
+    TRUE_OR_PANIC(argc >= 3,
+                  "Specify path to a file as a 1st arg and output folder as a second");
 
-    FormatContext format_context;
+    std::string path = argv[1];
+    std::string out_dir = argv[2];
 
-    format_context.openInput(path, ec);
-    if (ec) {
-      cerr << "Can't open input\n";
-      return 1;
-    }
+    ssize_t video_stream_id = -1;
+    VideoDecoderContext decoder_context;
+    Stream stream;
+    error_code ec;
 
-    cerr << "Streams: " << format_context.streamsCount() << endl;
+    {
 
-    // check if any stream in file
-    format_context.findStreamInfo(ec);
-    if (ec) {
-      cerr << "Can't find streams: " << ec << ", " << ec.message() << endl;
-      return 1;
-    }
+        FormatContext format_context;
 
-    // find the 1 stream in a file containing a video
-    for (size_t i = 0; i < format_context.streamsCount(); ++i) {
-      auto st = format_context.stream(i);
-      if (st.mediaType() == AVMEDIA_TYPE_VIDEO) {
-        video_stream_id = i;
-        stream = st;
-        break;
-      }
-    }
+        format_context.openInput(path, ec);
+        TRUE_OR_PANIC((bool) !ec,
+                      "Can't open a file");
 
-    cerr << video_stream_id << endl;
+        LOG("No of streams: " + std::to_string(format_context.streamsCount()));
 
-    // check if the video stream empty
-    if (stream.isNull()) {
-      cerr << "Video stream not found\n";
-      return 1;
-    }
+        // check if any stream in file
+        format_context.findStreamInfo(ec);
+        TRUE_OR_PANIC((bool) !ec,
+                      "No data streams in a file");
 
-    // detect the format of the video stream
-    if (stream.isValid()) {
-      decoder_context = VideoDecoderContext(stream);
+        // find the 1 stream in a file containing a video
+        for (size_t i = 0; i < format_context.streamsCount(); ++i) {
+            auto st = format_context.stream(i);
+            if (st.mediaType() == AVMEDIA_TYPE_VIDEO) {
+                video_stream_id = i;
+                stream = st;
+                break;
+            }
+        }
 
-      Codec codec = findDecodingCodec(decoder_context.raw()->codec_id);
+        LOG("Video stream id: " + std::to_string(video_stream_id));
 
-      decoder_context.setCodec(codec);
-      decoder_context.setRefCountedFrames(true);
+        // check if the video stream empty
+        TRUE_OR_PANIC(!stream.isNull(), "Video stream not found");
 
-      decoder_context.open({{"threads", "8"}}, Codec(), ec);
-      // vdec.open(ec);
-      if (ec) {
-        cerr << "Can't open codec\n";
-        return 1;
-      }
-    }
+        // detect the format of the video stream
+        if (stream.isValid()) {
+            decoder_context = VideoDecoderContext(stream);
+            Codec codec = findDecodingCodec(decoder_context.raw()->codec_id);
+            decoder_context.setCodec(codec);
+            decoder_context.setRefCountedFrames(true);
+            decoder_context.open({{"threads", "8"}}, Codec(), ec);
+            // vdec.open(ec);
+            TRUE_OR_PANIC((bool) !ec, "Cannot open this codec");
+        }
 
-    size_t sum = 0;
 
-    // loop through all the frames
-    while (Packet stream_packet = format_context.readPacket(ec)) {
-      if (ec) {
-        clog << "Packet reading error: " << ec << ", " << ec.message() << endl;
-        return 1;
-      }
+        size_t frame_count = 0;
+        // loop through all the frames
+        while (Packet stream_packet = format_context.readPacket(ec)) {
+            frame_count++;
 
-      if (stream_packet.streamIndex() != video_stream_id) {
-        continue;
-      }
+            TRUE_OR_PANIC((bool) !ec, "Packet reading error: " + ec.message());
 
-      auto ts = stream_packet.ts();
-      clog << "Read packet: " << ts << " / " << ts.seconds() << " / "
-           << stream_packet.timeBase()
-           << " / st: " << stream_packet.streamIndex() << endl;
+            if (stream_packet.streamIndex() != video_stream_id) {
+                continue;
+            }
 
-      // calculate time neeaded to decode current frame - i neded to check
-      auto start = std::chrono::high_resolution_clock::now();
-      VideoFrame frame = decoder_context.decode(stream_packet, ec);
-      auto stop = std::chrono::high_resolution_clock::now();
+            auto ts = stream_packet.ts();
+//            clog << "Read packet: " << ts << " / " << ts.seconds() << " / " << stream_packet.timeBase() << " / st: "
+//                 << stream_packet.streamIndex() << endl;
 
-      auto time =
-          std::chrono::duration_cast<std::chrono::microseconds>(stop - start)
-              .count();
-      std::clog << "Czas: " << time << std::endl;
+            LOG(
+                    "Read packet: " + std::to_string((double) ts) + " / " + "time base" + " index: " +
+                    std::to_string(stream_packet.streamIndex())
+            );
 
-      // sum times to calculate avg
-      sum += time;
+            // calculate time neeaded to decode current frame - i neded to check
+            auto start = std::chrono::high_resolution_clock::now();
+            TIME_START(reading_frame);
+            VideoFrame frame = decoder_context.decode(stream_packet, ec);
+            TIME_STOP(reading_frame, "Reading frame ");
 
-      // check if frame is correct
-      if (ec) {
-        cerr << "Error: " << ec << ", " << ec.message() << endl;
-        return 1;
-      } else if (!frame) {
-        cerr << "Empty frame\n";
-        // continue;
-      }
+            // check if frame is correct
+            TRUE_OR_PANIC((bool) !ec, "Error: " + ec.message());
+
+            if (!frame) {
+                ERR("Empty frame");
+                continue;
+            }
 
 #if SAVE_FRAMES
 
-      uint8_t *buff = (uint8_t *)malloc(frame.bufferSize() * sizeof(uint8_t));
-      buff = frame.data();
+            uint8_t *buff;
+            buff = frame.data();
 
-      std::fstream f;
+            std::fstream f;
 
-      std::string name = "./frames/frame" + std::to_string(count);
-      f.open(name, std::ios::out | std::ios::binary);
+            std::string name = out_dir + "frame" + std::to_string(frame_count);
+            f.open(name, std::ios::out | std::ios::binary);
 
-      for (int i = 0; i < frame.bufferSize(); i++) {
-        f << buff[i];
-      }
+            f.write((char *) buff, frame.bufferSize());
+            f.close();
 
 #endif
+            ts = frame.pts();
 
-      // i am only reading first 100 frames then i am stoping and showing the
-      // average
-      count++;
-      if (count > 10) {
-        std::cout << "Average decoding time: " << sum / 100 << std::endl;
-        break;
-      }
+            // show some info about the frame
+            LOG(
+                    "Frame: " +
+                    std::to_string(frame.width()) + "x" + std::to_string(frame.height()) +
+                    ", size= " + std::to_string(frame.size()) +
+                    ", ts=" + std::to_string((double) ts) +
+                    ", ref: " + std::to_string(frame.isReferenced()) + ":" + std::to_string(frame.refCount())
+            );
+        }
 
-      ts = frame.pts();
+        clog << "Flush frames;\n";
+        while (true) {
+            VideoFrame frame = decoder_context.decode(Packet(), ec);
+            TRUE_OR_PANIC((bool) !ec, "Error: " + ec.message());
+            if (!frame)
+                break;
+            auto ts = frame.pts();
 
-      // show some info about the frame
-      clog << "  Frame: " << frame.width() << "x" << frame.height()
-           << ", size=" << frame.size() << ", ts=" << ts
-           << ", tm: " << ts.seconds() << ", tb: " << frame.timeBase()
-           << ", ref=" << frame.isReferenced() << ":" << frame.refCount()
-           << endl;
+            clog << "  Frame: " << frame.width() << "x" << frame.height() << ", size=" << frame.size() << ", ts=" << ts
+                 << ", tm: " << ts.seconds() << ", tb: " << frame.timeBase() << ", ref=" << frame.isReferenced() << ":"
+                 << frame.refCount() << endl;
+            LOG(
+                    "Frame: " +
+                    std::to_string(frame.width()) + "x" + std::to_string(frame.height()) +
+                    ", size= " + std::to_string(frame.size()) +
+                    ", ts=" + std::to_string((double) ts) +
+                    ", ref: " + std::to_string(frame.isReferenced()) + ":" + std::to_string(frame.refCount())
+            );
+        }
+
+        // NOTE: stream decodec must be closed/destroyed before
+        // ictx.close();
+        // vdec.close();
     }
-
-    clog << "Flush frames;\n";
-    while (true) {
-      VideoFrame frame = decoder_context.decode(Packet(), ec);
-      if (ec) {
-        cerr << "Error: " << ec << ", " << ec.message() << endl;
-        return 1;
-      }
-      if (!frame)
-        break;
-      auto ts = frame.pts();
-      clog << "  Frame: " << frame.width() << "x" << frame.height()
-           << ", size=" << frame.size() << ", ts=" << ts
-           << ", tm: " << ts.seconds() << ", tb: " << frame.timeBase()
-           << ", ref=" << frame.isReferenced() << ":" << frame.refCount()
-           << endl;
-    }
-
-    // NOTE: stream decodec must be closed/destroyed before
-    // ictx.close();
-    // vdec.close();
-  }
 }
