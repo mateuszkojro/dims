@@ -30,23 +30,25 @@ using namespace std;
 using namespace av;
 using namespace mk;
 
-#define SAVE_FRAMES 1
+#define SAVE_FRAMES false
+#define ANALYZE_FRAME true
 
 int main(int argc, char **argv) {
 
     // Initialize my logger library
     mk::Logger::Config config = {
-            .show_line = true,
-            .show_file = true,
+            .show_line = false,
+            .show_file = false,
             .show_func = true,
-            .to_file = false
+            .to_file = false,
+            .timing = true
     };
 
     mk::Logger::init(mk::Logger::all, config);
 
     av::init();
 
-    av::setFFmpegLoggingLevel(AV_LOG_DEBUG);
+    av::setFFmpegLoggingLevel(AV_LOG_WARNING);
 
     TRUE_OR_PANIC(argc >= 3,
                   "Specify path to a file as a 1st arg and output folder as a second");
@@ -112,17 +114,16 @@ int main(int argc, char **argv) {
                 continue;
             }
 
-            auto ts = stream_packet.ts();
-//            clog << "Read packet: " << ts << " / " << ts.seconds() << " / " << stream_packet.timeBase() << " / st: "
+            auto timestamp = stream_packet.ts();
+//            clog << "Read packet: " << timestamp << " / " << timestamp.seconds() << " / " << stream_packet.timeBase() << " / st: "
 //                 << stream_packet.streamIndex() << endl;
 
             LOG(
-                    "Read packet: " + std::to_string((double) ts) + " / " + "time base" + " index: " +
+                    "Read packet: " + std::to_string((double) timestamp) + " / " + "time base" + " index: " +
                     std::to_string(stream_packet.streamIndex())
             );
 
-            // calculate time neeaded to decode current frame - i neded to check
-            auto start = std::chrono::high_resolution_clock::now();
+            // calculate time needed to decode current frame - i needed to check
             TIME_START(reading_frame);
             VideoFrame frame = decoder_context.decode(stream_packet, ec);
             TIME_STOP(reading_frame, "Reading frame ");
@@ -149,19 +150,29 @@ int main(int argc, char **argv) {
             f.close();
 
 #endif
-            ts = frame.pts();
+
+#if ANALYZE_FRAME
+
+            uint8_t* frame_data;
+
+            frame_data = frame.data();
+
+
+
+#endif
+            timestamp = frame.pts();
 
             // show some info about the frame
             LOG(
                     "Frame: " +
                     std::to_string(frame.width()) + "x" + std::to_string(frame.height()) +
                     ", size= " + std::to_string(frame.size()) +
-                    ", ts=" + std::to_string((double) ts) +
+                    ", timestamp=" + std::to_string((double) timestamp) +
                     ", ref: " + std::to_string(frame.isReferenced()) + ":" + std::to_string(frame.refCount())
             );
         }
 
-        clog << "Flush frames;\n";
+        LOG("Starting flushing frames");
         while (true) {
             VideoFrame frame = decoder_context.decode(Packet(), ec);
             TRUE_OR_PANIC((bool) !ec, "Error: " + ec.message());
@@ -169,9 +180,9 @@ int main(int argc, char **argv) {
                 break;
             auto ts = frame.pts();
 
-            clog << "  Frame: " << frame.width() << "x" << frame.height() << ", size=" << frame.size() << ", ts=" << ts
-                 << ", tm: " << ts.seconds() << ", tb: " << frame.timeBase() << ", ref=" << frame.isReferenced() << ":"
-                 << frame.refCount() << endl;
+//            clog << "  Frame: " << frame.width() << "x" << frame.height() << ", size=" << frame.size() << ", ts=" << ts
+//                 << ", tm: " << ts.seconds() << ", tb: " << frame.timeBase() << ", ref=" << frame.isReferenced() << ":"
+//                 << frame.refCount() << endl;
             LOG(
                     "Frame: " +
                     std::to_string(frame.width()) + "x" + std::to_string(frame.height()) +
