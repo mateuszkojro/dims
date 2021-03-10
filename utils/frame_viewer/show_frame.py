@@ -12,7 +12,11 @@ def read_file(path):
 def get_img(img, resolution):
 
     img = np.array(img[0::2])
-    img = img.reshape(resolution)
+    try:
+        img = img.reshape(resolution)
+    except:
+        print(f"Could not convert image to set resolution {resolution}")
+        exit(1)
     # (1080, 1920)
     return img
 
