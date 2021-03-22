@@ -4,3 +4,6 @@
 [submodule "video_analyzer/lib/debug_cpp"]
 	path = video_analyzer/lib/debug_cpp
 	url = https://github.com/mateuszkojro/debug_cpp
+[submodule "video_analyzer/lib/eigen"]
+	path = video_analyzer/lib/eigen
+	url = https://gitlab.com/libeigen/eigen.git
