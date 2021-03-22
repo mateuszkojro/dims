@@ -4,7 +4,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED yes)
 
 #add_custom_target(video_analyzer main.cc)
-add_executable(video_analyzer main.cc)
+
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(
@@ -23,8 +23,11 @@ set(${AV_BUILD_EXAMPLES} BOOL 0)
 
 add_subdirectory(./lib/avcpp/)
 add_subdirectory(./lib/debug_cpp/)
-
 include_directories(./lib/debug_cpp/)
+add_subdirectory(./lib/eigen/)
+
+
+add_executable(video_analyzer main.cc FrameReader.cpp FrameReader.h)
 
 foreach(target ${TARGETS})
 
@@ -35,6 +38,10 @@ foreach(target ${TARGETS})
   target_link_libraries(
     ${target}
     debug_cpp
+  )
+  target_link_libraries(
+    ${target}
+    eigen
   )
 
 endforeach()
