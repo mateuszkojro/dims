@@ -1,199 +1,183 @@
-
 #include <chrono>
 #include <cstddef>
-#include <fstream>
 #include <functional>
 #include <iostream>
-#include <map>
 #include <memory>
 #include <ratio>
-#include <set>
 #include <string>
 
-// #include "audioresampler.h"
 #include "av.h"
-// #include "avutils.h"
-// #include "codec.h"
-// #include "ffmpeg.h"
-// #include "packet.h"
-// #include "videorescaler.h"
 
 // API2
-#include "codec.h"
-#include "codeccontext.h"
-#include "format.h"
-#include "formatcontext.h"
 #include "Logger.h"
-#include "debug.h"
+//#include "codeccontext.h"
+//
+//#include <cmath>
 
-using namespace std;
-using namespace av;
+#include "FrameReader.h"
+
 using namespace mk;
 
 #define SAVE_FRAMES false
-#define ANALYZE_FRAME true
+
+// from https://en.wikipedia.org/wiki/YUV#Y%E2%80%B2UV422_to_RGB888_conversion
+
+void yuv2rgb(uint8_t yValue, uint8_t uValue, uint8_t vValue,
+             uint8_t &r, uint8_t &g, uint8_t &b) {
+
+    // we are intentionaly loosing the fractional part becouse colors are whole values
+    int rTmp = (int) yValue + (1.370705 * (vValue - 128));
+    // or fast integer computing with a small approximation
+    // rTmp = yValue + (351*(vValue-128))>>8;
+    int gTmp = (int) yValue - (0.698001 * (vValue - 128)) - (0.337633 * (uValue - 128));
+    // gTmp = yValue - (179*(vValue-128) + 86*(uValue-128))>>8;
+    int bTmp = (int) yValue + (1.732446 * (uValue - 128));
+    // bTmp = yValue + (443*(uValue-128))>>8;
+    r = std::clamp(rTmp, 0, 255);
+    g = std::clamp(gTmp, 0, 255);
+    b = std::clamp(bTmp, 0, 255);
+}
+
+FrameData yuv422_to_rgb(const FrameData &input) {
+    FrameData output(640 * 3, 480);
+
+    int j = 0;
+
+    for (size_t i = 0; i < input.size(); i += 4) {
+        int u = input(i + 0);
+        int y1 = input(i + 1);
+        int v = input(i + 2);
+        int y2 = input(i + 3);
+        yuv2rgb(y1, u, v, output(j), output(j + 1), output(j + 2));
+        yuv2rgb(y2, u, v, output(j + 3), output(j + 4), output(j + 5));
+        j += 6;
+    }
+
+
+    return output;
+}
+
+/*
+ for (size_t i = 0; i < input.size(); i += 4) {
+        int u = input(i + 0);
+        int y1 = input(i + 1);
+        int v = input(i + 2);
+        int y2 = input(i + 3);
+        yuv2rgb(y1, u, v, output(j), output(j + 1), output(j + 2));
+        yuv2rgb(y2, u, v, output(j + 3), output(j + 4), output(j + 5));
+        j += 6;
+    }
+*/
+
+
+
+class SaveFramesPPM : public FrameReader {
+
+public:
+    SaveFramesPPM() : FrameReader() {};
+
+    std::string out_path_;
+    size_t frame_counter = 0;
+
+    void on_frame(FrameData &data) override {
+        TIME_START(convert_to_rgb);
+        std::fstream file;
+        file.open(out_path_ + std::to_string(frame_counter++) + ".ppm", std::ios::out);
+
+        // write out format
+        file << "P3" << std::endl;
+        // write out dimentions of the image
+        //we have here bad dimentions
+        file << 640 << " " << 480 << std::endl;
+        // write out color depth
+        file << "255" << std::endl;
+        // convert YUV422 encoded pixels into RGB encoded pixels and write to file in plain text
+        //file << yuv422_to_rgb(data).transpose() << std::endl;
+        file << data.transpose() << std::endl;
+        TIME_STOP(convert_to_rgb, "converting to rgb took: ");
+    }
+
+};
+
+class SaveFramesBinary : public FrameReader {
+public:
+    SaveFramesBinary() : FrameReader() {}
+
+    std::string out_path_;
+    size_t frame_counter = 0;
+
+
+    void on_frame(FrameData &data) override {
+        auto file = fopen((out_path_ + std::to_string(frame_counter++) + ".bin").c_str(), "wb");
+        LOG("width: " + std::to_string(current_frame_info_.width()));
+        LOG("Matrix width: " + std::to_string(data.cols()));
+        LOG("height: " + std::to_string(current_frame_info_.height()));
+        LOG("Matrix height: " + std::to_string(data.rows()));
+        LOG("size: " + std::to_string(current_frame_info_.size()));
+        LOG("Matrix size: " + std::to_string(data.size()));
+        fwrite(data.data(), data.size(), 1, file);
+        fclose(file);
+    }
+
+};
+
+class SaveRawVideo : public FrameReader {
+
+    std::fstream out_file;
+
+public:
+    SaveRawVideo() : FrameReader() {
+        out_file.open("out_video.bin", std::ios::out | std::ios::binary);
+    }
+
+    void on_frame(FrameData &data) override {
+
+        auto out = yuv422_to_rgb(data).transpose().data();
+        if (out_file.bad())
+            ERR("File is bad");
+        else
+            LOG("File is good");
+        out_file.write((char *) this->current_frame_info_.data(),
+                       this->current_frame_info_.width() * current_frame_info_.height());
+    }
+};
+
 
 int main(int argc, char **argv) {
 
     // Initialize my logger library
-    mk::Logger::Config config = {
-            .show_line = false,
+    mk::Logger::Config config = {.show_line = false,
             .show_file = false,
             .show_func = true,
             .to_file = false,
-            .timing = true
-    };
+            .timing = true};
 
     mk::Logger::init(mk::Logger::all, config);
 
-    av::init();
+    TRUE_OR_PANIC(
+            argc >= 3,
+            "Specify path to a file as a 1st arg and output folder as a second");
 
-    av::setFFmpegLoggingLevel(AV_LOG_WARNING);
-
-    TRUE_OR_PANIC(argc >= 3,
-                  "Specify path to a file as a 1st arg and output folder as a second");
 
     std::string path = argv[1];
     std::string out_dir = argv[2];
 
-    ssize_t video_stream_id = -1;
-    VideoDecoderContext decoder_context;
-    Stream stream;
-    error_code ec;
+    SaveFramesPPM reader;
 
-    {
+    reader.out_path_ = out_dir;
 
-        FormatContext format_context;
+    reader.init(path);
 
-        format_context.openInput(path, ec);
-        TRUE_OR_PANIC((bool) !ec,
-                      "Can't open a file");
+    reader.read_packets();
 
-        LOG("No of streams: " + std::to_string(format_context.streamsCount()));
+    reader.end();
 
-        // check if any stream in file
-        format_context.findStreamInfo(ec);
-        TRUE_OR_PANIC((bool) !ec,
-                      "No data streams in a file");
+/*
+    SaveRawVideo video;
 
-        // find the 1 stream in a file containing a video
-        for (size_t i = 0; i < format_context.streamsCount(); ++i) {
-            auto st = format_context.stream(i);
-            if (st.mediaType() == AVMEDIA_TYPE_VIDEO) {
-                video_stream_id = i;
-                stream = st;
-                break;
-            }
-        }
+    video.init(path);
+    video.read_packets();
+    video.end();
+*/
 
-        LOG("Video stream id: " + std::to_string(video_stream_id));
-
-        // check if the video stream empty
-        TRUE_OR_PANIC(!stream.isNull(), "Video stream not found");
-
-        // detect the format of the video stream
-        if (stream.isValid()) {
-            decoder_context = VideoDecoderContext(stream);
-            Codec codec = findDecodingCodec(decoder_context.raw()->codec_id);
-            decoder_context.setCodec(codec);
-            decoder_context.setRefCountedFrames(true);
-            decoder_context.open({{"threads", "8"}}, Codec(), ec);
-            // vdec.open(ec);
-            TRUE_OR_PANIC((bool) !ec, "Cannot open this codec");
-        }
-
-
-        size_t frame_count = 0;
-        // loop through all the frames
-        while (Packet stream_packet = format_context.readPacket(ec)) {
-            frame_count++;
-
-            TRUE_OR_PANIC((bool) !ec, "Packet reading error: " + ec.message());
-
-            if (stream_packet.streamIndex() != video_stream_id) {
-                continue;
-            }
-
-            auto timestamp = stream_packet.ts();
-//            clog << "Read packet: " << timestamp << " / " << timestamp.seconds() << " / " << stream_packet.timeBase() << " / st: "
-//                 << stream_packet.streamIndex() << endl;
-
-            LOG(
-                    "Read packet: " + std::to_string((double) timestamp) + " / " + "time base" + " index: " +
-                    std::to_string(stream_packet.streamIndex())
-            );
-
-            // calculate time needed to decode current frame - i needed to check
-            TIME_START(reading_frame);
-            VideoFrame frame = decoder_context.decode(stream_packet, ec);
-            TIME_STOP(reading_frame, "Reading frame ");
-
-            // check if frame is correct
-            TRUE_OR_PANIC((bool) !ec, "Error: " + ec.message());
-
-            if (!frame) {
-                ERR("Empty frame");
-                continue;
-            }
-
-#if SAVE_FRAMES
-
-            uint8_t *buff;
-            buff = frame.data();
-
-            std::fstream f;
-
-            std::string name = out_dir + "frame" + std::to_string(frame_count);
-            f.open(name, std::ios::out | std::ios::binary);
-
-            f.write((char *) buff, frame.bufferSize());
-            f.close();
-
-#endif
-
-#if ANALYZE_FRAME
-
-            uint8_t* frame_data;
-
-            frame_data = frame.data();
-
-
-
-#endif
-            timestamp = frame.pts();
-
-            // show some info about the frame
-            LOG(
-                    "Frame: " +
-                    std::to_string(frame.width()) + "x" + std::to_string(frame.height()) +
-                    ", size= " + std::to_string(frame.size()) +
-                    ", timestamp=" + std::to_string((double) timestamp) +
-                    ", ref: " + std::to_string(frame.isReferenced()) + ":" + std::to_string(frame.refCount())
-            );
-        }
-
-        LOG("Starting flushing frames");
-        while (true) {
-            VideoFrame frame = decoder_context.decode(Packet(), ec);
-            TRUE_OR_PANIC((bool) !ec, "Error: " + ec.message());
-            if (!frame)
-                break;
-            auto ts = frame.pts();
-
-//            clog << "  Frame: " << frame.width() << "x" << frame.height() << ", size=" << frame.size() << ", ts=" << ts
-//                 << ", tm: " << ts.seconds() << ", tb: " << frame.timeBase() << ", ref=" << frame.isReferenced() << ":"
-//                 << frame.refCount() << endl;
-            LOG(
-                    "Frame: " +
-                    std::to_string(frame.width()) + "x" + std::to_string(frame.height()) +
-                    ", size= " + std::to_string(frame.size()) +
-                    ", ts=" + std::to_string((double) ts) +
-                    ", ref: " + std::to_string(frame.isReferenced()) + ":" + std::to_string(frame.refCount())
-            );
-        }
-
-        // NOTE: stream decodec must be closed/destroyed before
-        // ictx.close();
-        // vdec.close();
-    }
 }
