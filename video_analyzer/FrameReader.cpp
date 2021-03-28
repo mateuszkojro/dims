@@ -106,15 +106,9 @@ void mk::FrameReader::read_packets() {
             continue;
         }
 
-
-        //current_frame_data_ = Eigen::Map<Eigen::Matrix<uint8_t, Eigen::Dynamic, Eigen::Dynamic>>(
-        //        current_frame_info_.data(), current_frame_info_.height(), current_frame_info_.width());
-
-        //WARN("We are doubling here the width thats specific for YUV422 we should definetly change that");
-        current_frame_data_ = Eigen::Map<Eigen::Matrix<uint8_t, Eigen::Dynamic, Eigen::Dynamic>>(
-                current_frame_info_.data(), current_frame_info_.height() , current_frame_info_.width());
-
-        //current_frame_data_.resize(current_frame_info_.height(), current_frame_info_.width());
+        // We are specifing stride here to ignore values that are nor grayscale channel
+        current_frame_data_ = Eigen::Map<Eigen::Matrix<uint8_t, Eigen::Dynamic, Eigen::Dynamic>, 0, Eigen::InnerStride<3>>(
+                current_frame_info_.data(), current_frame_info_.height(), current_frame_info_.width());
 
         on_frame(current_frame_data_);
 
