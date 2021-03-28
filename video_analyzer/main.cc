@@ -38,8 +38,10 @@ void yuv2rgb(uint8_t yValue, uint8_t uValue, uint8_t vValue,
     b = std::clamp(bTmp, 0, 255);
 }
 
+// this is verry slow but it can be done by matrix multiplication and eigen
+// can do those quickly
 FrameData yuv422_to_rgb(const FrameData &input) {
-    FrameData output(640 * 3, 480);
+    FrameData output(input.cols(), input.rows());
 
     int j = 0;
 
@@ -88,7 +90,7 @@ public:
         file << "P3" << std::endl;
         // write out dimentions of the image
         //we have here bad dimentions
-        file << 640 << " " << 480 << std::endl;
+        file << data.cols() << " " << data.rows() << std::endl;
         // write out color depth
         file << "255" << std::endl;
         // convert YUV422 encoded pixels into RGB encoded pixels and write to file in plain text

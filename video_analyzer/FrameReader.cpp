@@ -110,9 +110,9 @@ void mk::FrameReader::read_packets() {
         //current_frame_data_ = Eigen::Map<Eigen::Matrix<uint8_t, Eigen::Dynamic, Eigen::Dynamic>>(
         //        current_frame_info_.data(), current_frame_info_.height(), current_frame_info_.width());
 
-        WARN("We are doubling here the width thats specific for YUV422 we should definetly change that");
+        //WARN("We are doubling here the width thats specific for YUV422 we should definetly change that");
         current_frame_data_ = Eigen::Map<Eigen::Matrix<uint8_t, Eigen::Dynamic, Eigen::Dynamic>>(
-                current_frame_info_.data(), current_frame_info_.height(), current_frame_info_.width()*2);
+                current_frame_info_.data(), current_frame_info_.height() , current_frame_info_.width());
 
         //current_frame_data_.resize(current_frame_info_.height(), current_frame_info_.width());
 
