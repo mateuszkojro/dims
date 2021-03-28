@@ -95,6 +95,7 @@ public:
         file << "255" << std::endl;
         // convert YUV422 encoded pixels into RGB encoded pixels and write to file in plain text
         //file << yuv422_to_rgb(data).transpose() << std::endl;
+        //file << data.transpose() << std::endl;
         file << data.transpose() << std::endl;
         TIME_STOP(convert_to_rgb, "converting to rgb took: ");
     }
