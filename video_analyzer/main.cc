@@ -26,13 +26,13 @@ void yuv2rgb(uint8_t yValue, uint8_t uValue, uint8_t vValue,
              uint8_t &r, uint8_t &g, uint8_t &b) {
 
     // we are intentionaly loosing the fractional part becouse colors are whole values
-    int rTmp = (int) yValue + (1.370705 * (vValue - 128));
+    //int rTmp = (int) yValue + (1.370705 * (vValue - 128));
     // or fast integer computing with a small approximation
-    // rTmp = yValue + (351*(vValue-128))>>8;
-    int gTmp = (int) yValue - (0.698001 * (vValue - 128)) - (0.337633 * (uValue - 128));
-    // gTmp = yValue - (179*(vValue-128) + 86*(uValue-128))>>8;
-    int bTmp = (int) yValue + (1.732446 * (uValue - 128));
-    // bTmp = yValue + (443*(uValue-128))>>8;
+    int rTmp = yValue + (351 * (vValue - 128)) >> 8;
+    //int gTmp = (int) yValue - (0.698001 * (vValue - 128)) - (0.337633 * (uValue - 128));
+    int gTmp = yValue - (179 * (vValue - 128) + 86 * (uValue - 128)) >> 8;
+//    int bTmp = (int) yValue + (1.732446 * (uValue - 128));
+    int bTmp = yValue + (443 * (uValue - 128)) >> 8;
     r = std::clamp(rTmp, 0, 255);
     g = std::clamp(gTmp, 0, 255);
     b = std::clamp(bTmp, 0, 255);
@@ -40,6 +40,8 @@ void yuv2rgb(uint8_t yValue, uint8_t uValue, uint8_t vValue,
 
 // this is verry slow but it can be done by matrix multiplication and eigen
 // can do those quickly
+
+//! this does not work for some reason
 FrameData yuv422_to_rgb(const FrameData &input) {
     FrameData output(input.cols(), input.rows());
 
@@ -59,20 +61,6 @@ FrameData yuv422_to_rgb(const FrameData &input) {
     return output;
 }
 
-/*
- for (size_t i = 0; i < input.size(); i += 4) {
-        int u = input(i + 0);
-        int y1 = input(i + 1);
-        int v = input(i + 2);
-        int y2 = input(i + 3);
-        yuv2rgb(y1, u, v, output(j), output(j + 1), output(j + 2));
-        yuv2rgb(y2, u, v, output(j + 3), output(j + 4), output(j + 5));
-        j += 6;
-    }
-*/
-
-
-
 class SaveFramesPPM : public FrameReader {
 
 public:
@@ -87,7 +75,7 @@ public:
         file.open(out_path_ + std::to_string(frame_counter++) + ".ppm", std::ios::out);
 
         // write out format
-        file << "P3" << std::endl;
+        file << "P2" << std::endl;
         // write out dimentions of the image
         //we have here bad dimentions
         file << data.cols() << " " << data.rows() << std::endl;
@@ -151,9 +139,9 @@ int main(int argc, char **argv) {
     // Initialize my logger library
     mk::Logger::Config config = {.show_line = false,
             .show_file = false,
-            .show_func = true,
+            .show_func = false,
             .to_file = false,
-            .timing = true};
+            .timing = false};
 
     mk::Logger::init(mk::Logger::all, config);
 
