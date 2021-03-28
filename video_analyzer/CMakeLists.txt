@@ -44,4 +44,13 @@ foreach(target ${TARGETS})
     eigen
   )
 
+  # Copy example avi file to out folder
+  add_custom_command(
+          TARGET ${target} POST_BUILD
+          COMMAND ${CMAKE_COMMAND} -E copy_if_different
+          "${PROJECT_SOURCE_DIR}/files/example_short.avi"
+          $<TARGET_FILE_DIR:${target}>
+  )
+
 endforeach()
+
