@@ -1,29 +1,15 @@
-#include <chrono>
-#include <cstddef>
-#include <functional>
-#include <iostream>
-#include <memory>
-#include <ratio>
-#include <string>
+//
+// Created by mateusz on 4/10/21.
+//
 
-#include "av.h"
-
-// API2
-#include "Logger.h"
 #include "FrameReader.h"
-
-int pow(int x) {
-    return x * x;
-}
 
 using namespace mk;
 
+class SaveFramesPPM : public FrameReader {
 
-class SaveFramesPPMDifference : public FrameReader {
 public:
-    SaveFramesPPMDifference() : FrameReader() {};
-
-    FrameData last_frame;
+    SaveFramesPPM() : FrameReader() {};
 
     std::string out_path_;
     size_t frame_counter = 0;
@@ -42,32 +28,8 @@ public:
         file << "255" << std::endl;
         // convert YUV422 encoded pixels into RGB encoded pixels and write to file in plain text
         //file << yuv422_to_rgb(data).transpose() << std::endl;
-        //file << data.transpose() - last_frame << std::endl;
-        auto copy = data.transpose();
-        auto result = copy;
-        for (size_t i = 0; i < data.size(); i++) {
-            if (last_frame(i) <= copy(i)) {
-                result(i) = copy(i) - last_frame(i);
-            } else {
-                result(i) = 0;
-            }
-        }
-
-        float max = result.maxCoeff();
-        LOG("max: " + std::to_string(max));
-        LOG("size: " + std::to_string(result.size()));
-        LOG("x*y: " + std::to_string(result.rows() * result.cols()));
-
-        for (size_t i = 0; i < result.size(); i++) {
-            result(i) = (uint_fast8_t) (((float)result(i) / max) * 255);
-        }
-
-        file << result;
-
-//        file << copy - last_frame;
-
+        file << data.transpose() << std::endl;
         //TIME_STOP(convert_to_rgb, "converting to rgb took: ");
-        last_frame = copy;
     }
 
 };
@@ -90,15 +52,18 @@ int main(int argc, char **argv) {
     std::string path = argv[1];
     std::string out_dir = argv[2];
 
-    SaveFramesPPMDifference ppmDiff;
+    SaveFramesPPM ppmDiff;
 
-    ppmDiff.last_frame = FrameData(1920, 1080).setConstant(0);
     ppmDiff.out_path_ = out_dir;
+
     ppmDiff.init(path);
 
     TIME_START(decode);
+
     ppmDiff.read_packets();
+
     TIME_STOP(decode, "Decoding took: ");
+
 
     ppmDiff.end();
 

@@ -7,7 +7,7 @@
 void mk::FrameReader::init(const std::string &path) {
     av::init();
 
-    av::setFFmpegLoggingLevel(AV_LOG_DEBUG);
+    //av::setFFmpegLoggingLevel(AV_LOG_DEBUG);
 
 
     format_context_.openInput(path, ec_);
@@ -77,6 +77,8 @@ void mk::FrameReader::end() {
 void mk::FrameReader::read_packets() {
     while (av::Packet stream_packet = format_context_.readPacket(ec_)) {
 
+        TIME_START(frame_ffmpeg);
+
         TRUE_OR_PANIC((bool) !ec_, "Packet reading error: " + ec_.message());
 
         if (stream_packet.streamIndex() != video_stream_id_) {
@@ -94,9 +96,8 @@ void mk::FrameReader::read_packets() {
             " index: " + std::to_string(stream_packet.streamIndex()));
 
         // calculate time needed to decode current frame - i needed to check
-        TIME_START(reading_frame);
         current_frame_info_ = decoder_context_.decode(stream_packet, ec_);
-        TIME_STOP(reading_frame, "Reading frame ");
+
 
         // check if frame is correct
         TRUE_OR_PANIC((bool) !ec_, "Error: " + ec_.message());
@@ -106,11 +107,16 @@ void mk::FrameReader::read_packets() {
             continue;
         }
 
+
+
         // We are specifing stride here to ignore values that are nor grayscale channel
         current_frame_data_ = Eigen::Map<Eigen::Matrix<uint8_t, Eigen::Dynamic, Eigen::Dynamic>, 0, Eigen::InnerStride<3>>(
                 current_frame_info_.data(), current_frame_info_.height(), current_frame_info_.width());
+        TIME_STOP(frame_ffmpeg,"Frame eigen: ");
 
         on_frame(current_frame_data_);
+
+
 
     }
 }
