@@ -7,3 +7,6 @@
 [submodule "video_analyzer/lib/eigen"]
 	path = video_analyzer/lib/eigen
 	url = https://gitlab.com/libeigen/eigen.git
+[submodule "video_analyzer/lib/SDL"]
+	path = video_analyzer/lib/SDL
+	url = https://github.com/libsdl-org/SDL
