@@ -11,6 +11,7 @@
 // API2
 #include "Logger.h"
 #include "FrameReader.h"
+#include "SImpleShow.h"
 
 int pow(int x) {
     return x * x;
@@ -23,6 +24,7 @@ class SaveFramesPPMDifference : public FrameReader {
 public:
     SaveFramesPPMDifference() : FrameReader() {};
 
+    SimpleShow show{1920,1080};
     FrameData last_frame;
 
     std::string out_path_;
@@ -40,9 +42,7 @@ public:
         file << data.cols() << " " << data.rows() << std::endl;
         // write out color depth
         file << "255" << std::endl;
-        // convert YUV422 encoded pixels into RGB encoded pixels and write to file in plain text
-        //file << yuv422_to_rgb(data).transpose() << std::endl;
-        //file << data.transpose() - last_frame << std::endl;
+
         auto copy = data.transpose();
         auto result = copy;
         for (size_t i = 0; i < data.size(); i++) {
@@ -59,14 +59,13 @@ public:
         LOG("x*y: " + std::to_string(result.rows() * result.cols()));
 
         for (size_t i = 0; i < result.size(); i++) {
-            result(i) = (uint_fast8_t) (((float)result(i) / max) * 255);
+            result(i) = (uint_fast8_t) (((float) result(i) / max) * 255);
         }
 
         file << result;
 
-//        file << copy - last_frame;
+        show.imshow(result.data(), result.cols(), result.rows());
 
-        //TIME_STOP(convert_to_rgb, "converting to rgb took: ");
         last_frame = copy;
     }
 
@@ -84,7 +83,7 @@ int main(int argc, char **argv) {
     mk::Logger::init(mk::Logger::all, config);
 
     TRUE_OR_PANIC(
-            argc >= 3,
+            argc >= 2,
             "Specify path to a file as a 1st arg and output folder as a second");
 
     std::string path = argv[1];

@@ -8,7 +8,7 @@ using namespace mk;
 
 class SaveFramesBinary : public FrameReader {
 public:
-    SaveFramesBinary() : FrameReader() {}
+    SaveFramesBinary() = default;
 
     std::string out_path_;
     size_t frame_counter = 0;

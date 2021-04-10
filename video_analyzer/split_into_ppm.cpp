@@ -6,10 +6,10 @@
 
 using namespace mk;
 
-class SaveFramesPPM : public FrameReader {
+class ShowVideo : public FrameReader {
 
 public:
-    SaveFramesPPM() : FrameReader() {};
+    ShowVideo() = default;
 
     std::string out_path_;
     size_t frame_counter = 0;
@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
     std::string path = argv[1];
     std::string out_dir = argv[2];
 
-    SaveFramesPPM ppmDiff;
+    ShowVideo ppmDiff;
 
     ppmDiff.out_path_ = out_dir;
 
