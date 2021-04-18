@@ -54,8 +54,6 @@ SimpleShow::~SimpleShow() {
 
 void SimpleShow::imshow(const uint8_t *buff, size_t x, size_t y) {
 
-    assert(x <= width_);
-    assert(y <= height_);
 
     // convert the grayscale pixels to ARGB8888 format
     for (int i = 0; i < x * y; i++) {
