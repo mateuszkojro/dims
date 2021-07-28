@@ -2,6 +2,7 @@ import math
 import cv2
 from dataclasses import dataclass, astuple
 from functools import cache
+import imutils
 
 
 @dataclass(unsafe_hash=True)
@@ -82,6 +83,16 @@ class Event:
 @cache
 def euc_distance(pos1: Coord, pos2: Coord) -> float:
     return math.sqrt((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2)
+
+
+def prepare_image(image, target_size):
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    image = imutils.resize(image, width=target_size)
+    x = y = 0
+    h, w = image.shape
+    # Cut out the description
+    image = image[y:(h - 20), x:w]
+    return image
 
 
 # Adapted form:
