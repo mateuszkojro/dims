@@ -7,6 +7,7 @@ import imutils
 from CustomAlgorithm import *
 
 INPUT_PATH = "./file.avi"
+SHOW_RAW = True
 SHOW_DELTA = True
 
 DRAW_BOX = False
@@ -52,18 +53,30 @@ def main():
             continue
 
         frame_no += 1
+        frame = imutils.resize(frame, width=TARGET_WIDTH)
 
-        frame = prepare_image(frame, TARGET_WIDTH)
+        if SHOW_RAW:
+            raw = frame.copy()
+
+        x = 0
+        y = 0
+        w = frame.shape[1]
+        h = frame.shape[0]
+
+        # Cut out the description
+        frame = frame[y:(h - 20), x:w]
+
+        grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         if WITH_GAUSS:
-            frame = cv2.GaussianBlur(frame, GAUSS_SIGMA, 0)
+            grayscale = cv2.GaussianBlur(grayscale, GAUSS_SIGMA, 0)
 
         # if the first frame is None, initialize it
         if first_frame is None:
-            first_frame = frame
+            first_frame = grayscale
             continue
 
-        delta = cv2.absdiff(frame, first_frame)
+        delta = cv2.absdiff(grayscale, first_frame)
         thresh = cv2.threshold(delta, 55, 255, cv2.THRESH_BINARY)[1]
 
         # on threshold image
@@ -116,6 +129,9 @@ def main():
             cv2.putText(frame,
                         f"Frame time: {(end_time - start_time):.3f}s ({math.floor(1 / (end_time - start_time))}fps), average {time_sum / frame_no:.3f}s per frame",
                         (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 1)
+
+        if SHOW_RAW:
+            cv2.imshow("Raw", raw)
 
         if SHOW_DELTA:
             cv2.imshow("Threshold", thresh)
