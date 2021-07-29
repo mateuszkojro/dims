@@ -62,8 +62,8 @@ class Event:
                 max_x = event.x
             if event.y > max_y:
                 max_y = event.y
-        minimal = math.floor(min_x), math.floor(min_y)
-        maximal = math.floor(max_x), math.floor(max_y)
+        minimal = Coord(math.floor(min_x), math.floor(min_y))
+        maximal = Coord(math.floor(max_x), math.floor(max_y))
         return minimal, maximal
 
     def path(self) -> (Coord, Coord):
@@ -79,20 +79,13 @@ class Event:
                 return True
         return False
 
+    def magnitude(self):
+        return len(self.positions)
+
 
 @cache
 def euc_distance(pos1: Coord, pos2: Coord) -> float:
     return math.sqrt((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2)
-
-
-def prepare_image(image, target_size):
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    image = imutils.resize(image, width=target_size)
-    x = y = 0
-    h, w = image.shape
-    # Cut out the description
-    image = image[y:(h - 20), x:w]
-    return image
 
 
 # Adapted form:
@@ -101,8 +94,6 @@ def heatmap_color(val, max_val):
     val = val / max_val
     NUM_COLORS = 2
     color = [[0, 0, 1], [0, 1, 0], [1, 0, 0]]
-    idx1 = None
-    idx2 = None
     fractBetween = 0
     if val <= 0:
         idx1 = idx2 = 0  # ;} // accounts for an input <= 0
@@ -119,3 +110,92 @@ def heatmap_color(val, max_val):
     blue = (color[idx2][2] - color[idx1][2]) * fractBetween + color[idx1][2]
 
     return blue * 255, green * 255, red * 255
+
+
+def save_event(event: Event):
+    return event.magnitude()
+
+
+def resize_frame(image, width=1920):
+    # Scale image
+    image = imutils.resize(image, width=width)
+    x = y = 0
+    h = image.shape[0]
+    w = image.shape[1]
+
+    # Cut out the description
+    image = image[y:(h - 20), x:w]
+    return image
+
+
+def preprocess_frame(frame, sigma=(3, 3)):
+    grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    grayscale = cv2.GaussianBlur(grayscale, sigma, 0)
+    return grayscale
+
+
+def get_contours(frame, reference_frame):
+    delta = cv2.absdiff(frame, reference_frame)
+    thresh = cv2.threshold(delta, 55, 255, cv2.THRESH_BINARY)[1]
+
+    # on threshold image
+    thresh = cv2.dilate(thresh, None, iterations=2)
+
+    contours = cv2.findContours(thresh.copy(),
+                                cv2.RETR_EXTERNAL,
+                                cv2.CHAIN_APPROX_SIMPLE)
+    contours = imutils.grab_contours(contours)
+
+    return contours
+
+
+def extract_events(contours, event_list, frame_number, triger_treshold_area=5):
+    for contour in contours:
+        # if the contour is too small, ignore it
+        if cv2.contourArea(contour) < triger_treshold_area:
+            return
+        # compute the bounding box for the contour
+        (x, y, w, h) = cv2.boundingRect(contour)
+        position = Coord(x, y)
+        size = Coord(w, h)
+        was_added = False
+        new_event = EventInfo(frame_number, position, size)
+        for event in event_list:
+            if event.add_if_similar(new_event):
+                was_added = True
+        if not was_added:
+            event_list.append(Event(new_event))
+
+
+def update_events(event_list, frame_number, drop_inactive_time=3, triger_treshold=20):
+    triggers = []
+    for event in event_list:
+        # remove events not active for more than 5 frames
+        if abs(event.last_changed - frame_number) > drop_inactive_time:
+            # Here we should save info if event is good enough
+            if event.magnitude() < triger_treshold:
+                return []
+
+            start, end = event.path()
+            if euc_distance(start, end) < 20:
+                triggers.append(save_event(event))
+
+            event_list.remove(event)
+    return triggers
+
+
+def annotate_frame(frame, event_list, draw_path=True, draw_box=False, draw_confidence=True, heatmap=(0, 20)):
+    for event in event_list:
+        if draw_path:
+            rect = event.path()
+            color = heatmap_color(len(event.positions), heatmap[1]) if heatmap else (0, 255, 0)
+            cv2.line(frame, rect[0].tuple(), rect[1].tuple(), color, 3)
+
+        if draw_box:
+            rect = event.bounding_rect()
+            cv2.rectangle(frame, rect[0].tuple(), rect[1].tuple(), (0, 255, 0), 2)
+
+        if draw_confidence:
+            cv2.putText(frame, f"Trigger count: {len(event.positions)}", rect[0].tuple(),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.35, (0, 0, 255), 1)
