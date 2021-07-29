@@ -102,8 +102,8 @@ def analyze(path):
                 continue
             # compute the bounding box for the contour
             (x, y, w, h) = cv2.boundingRect(c)
-            position = Coord(x, y)
-            size = Coord(w, h)
+            position = Vec2(x, y)
+            size = Vec2(w, h)
             was_added = False
             new_event = EventInfo(frame_no, position, size)
             for event in events:
@@ -129,7 +129,7 @@ def analyze(path):
             if SHOW:
                 if DRAW_PATH:
                     rect = event.path()
-                    color = heatmap_color(len(event.positions), EVENT_TRESHOLD) if HEATMAP else (0, 255, 0)
+                    color = heatmap_color(event.magnitude(), EVENT_TRESHOLD) if HEATMAP else (0, 255, 0)
                     cv2.line(frame, rect[0].tuple(), rect[1].tuple(), color, 3)
 
                 if DRAW_BOX:

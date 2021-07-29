@@ -6,7 +6,7 @@ import imutils
 
 
 @dataclass(unsafe_hash=True)
-class Coord:
+class Vec2:
     x: int
     y: int
 
@@ -18,14 +18,14 @@ class Coord:
 @dataclass(frozen=True)
 class EventInfo:
     frame_no: int
-    position: Coord
-    size: Coord
+    position: Vec2
+    size: Vec2
 
     @cache
     def center(self):
         x = self.position.x + (self.size.x / 2)
         y = self.position.y + (self.size.y / 2)
-        return Coord(int(x), int(y))
+        return Vec2(int(x), int(y))
 
     def is_simillar_to(self, event, treshold: float):
         # check the time between events
@@ -44,6 +44,7 @@ class Event:
     def __init__(self, position: EventInfo):
         self.positions = []
         self.positions.append(position)
+        self.first_point = position.frame_no
         self.last_changed = position.frame_no
 
     # TODO: This should be done using that
@@ -62,11 +63,11 @@ class Event:
                 max_x = event.x
             if event.y > max_y:
                 max_y = event.y
-        minimal = Coord(math.floor(min_x), math.floor(min_y))
-        maximal = Coord(math.floor(max_x), math.floor(max_y))
+        minimal = Vec2(math.floor(min_x), math.floor(min_y))
+        maximal = Vec2(math.floor(max_x), math.floor(max_y))
         return minimal, maximal
 
-    def path(self) -> (Coord, Coord):
+    def path(self) -> (Vec2, Vec2):
         start = self.positions[0].position
         end = self.positions[-1].position
         return start, end
@@ -82,9 +83,26 @@ class Event:
     def magnitude(self):
         return len(self.positions)
 
+    def too_slow(self, min_speed=10):
+        if len(self.positions) < 5:
+            return False
 
-@cache
-def euc_distance(pos1: Coord, pos2: Coord) -> float:
+        time = (self.last_changed - self.first_point)
+        if time == 0:
+            return False
+
+        start, stop = self.path()
+        speed = euc_distance(start, stop) / time
+        if speed < min_speed:
+            return True
+
+    def lenght(self):
+        start, stop = self.path()
+        return euc_distance(start, stop)
+
+
+# @cache
+def euc_distance(pos1: Vec2, pos2: Vec2) -> float:
     return math.sqrt((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2)
 
 
@@ -156,8 +174,8 @@ def extract_events(contours, event_list, frame_number, triger_treshold_area=5):
             return
         # compute the bounding box for the contour
         (x, y, w, h) = cv2.boundingRect(contour)
-        position = Coord(x, y)
-        size = Coord(w, h)
+        position = Vec2(x, y)
+        size = Vec2(w, h)
         was_added = False
         new_event = EventInfo(frame_number, position, size)
         for event in event_list:
@@ -167,20 +185,29 @@ def extract_events(contours, event_list, frame_number, triger_treshold_area=5):
             event_list.append(Event(new_event))
 
 
-def update_events(event_list, frame_number, drop_inactive_time=3, triger_treshold=20):
+def update_events(event_list, frame_number, drop_inactive_time=3, triger_treshold=5):
     triggers = []
     for event in event_list:
         # remove events not active for more than 5 frames
         if abs(event.last_changed - frame_number) > drop_inactive_time:
             # Here we should save info if event is good enough
+
             if event.magnitude() < triger_treshold:
+                event_list.remove(event)
                 return []
 
-            start, end = event.path()
-            if euc_distance(start, end) < 20:
-                triggers.append(save_event(event))
+            if event.lenght() < 20:
+                event_list.remove(event)
+                return []
 
+            if event.too_slow():
+                event_list.remove(event)
+                return []
+
+            print("Found ok trigger")
+            triggers.append(save_event(event))
             event_list.remove(event)
+
     return triggers
 
 
@@ -196,6 +223,6 @@ def annotate_frame(frame, event_list, draw_path=True, draw_box=False, draw_confi
             cv2.rectangle(frame, rect[0].tuple(), rect[1].tuple(), (0, 255, 0), 2)
 
         if draw_confidence:
-            cv2.putText(frame, f"Trigger count: {len(event.positions)}", rect[0].tuple(),
+            cv2.putText(frame, f"{event.magnitude()}", rect[0].tuple(),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         0.35, (0, 0, 255), 1)
