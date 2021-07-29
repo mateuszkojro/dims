@@ -194,15 +194,15 @@ def update_events(event_list, frame_number, drop_inactive_time=3, triger_treshol
 
             if event.magnitude() < triger_treshold:
                 event_list.remove(event)
-                return []
+                return None
 
-            if event.lenght() < 20:
-                event_list.remove(event)
-                return []
+            # if event.lenght() < 20:
+            #     event_list.remove(event)
+            #     return None
 
-            if event.too_slow():
-                event_list.remove(event)
-                return []
+            # if event.too_slow():
+            #     event_list.remove(event)
+            #     return None
 
             print("Found ok trigger")
             triggers.append(save_event(event))
@@ -226,3 +226,6 @@ def annotate_frame(frame, event_list, draw_path=True, draw_box=False, draw_confi
             cv2.putText(frame, f"{event.magnitude()}", rect[0].tuple(),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         0.35, (0, 0, 255), 1)
+
+def on_destroy():
+    pass
