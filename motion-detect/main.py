@@ -3,9 +3,13 @@
 import cv2
 import time
 import imutils
+import matplotlib.pyplot as plt
+import numpy as np
+import sys
 
 from CustomAlgorithm import *
 
+SHOW = False
 INPUT_PATH = "./file.avi"
 SHOW_RAW = True
 SHOW_DELTA = True
@@ -22,12 +26,14 @@ WITH_GAUSS = True
 GAUSS_SIGMA = (3, 3)
 
 TRIGER_AREA_TRESHOLD = 5
-DROP_INACTIVE_TIME = 5
+DROP_INACTIVE_TIME = 3
 
 EVENT_TRESHOLD = 10
 
 
-def main():
+def analyze(path):
+    results = []
+    INPUT_PATH = path
     events: [Event] = []
     frame_no = 0
     time_sum = 0
@@ -39,18 +45,23 @@ def main():
     running = True
     wait_time = 0
     while True:
-        time.sleep(wait_time)
+        # time.sleep(wait_time)
         start_time = time.monotonic()
 
         status, frame = video_capture.read()
 
         # Loop to the beginning when de file end
-        if status is False:
-            print("Rolling back to the beginning")
-            video_capture.set(cv2.CAP_PROP_POS_FRAMES, 1)
-            # events = []
-            # frame_no = 0
-            continue
+        # if status is False:
+        #     print("Rolling back to the beginning")
+        #     video_capture.set(cv2.CAP_PROP_POS_FRAMES, 1)
+        #     # events = []
+        #     # frame_no = 0
+        #     continue
+
+        if not status:
+            print(INPUT_PATH)
+            time.sleep(10)
+            break
 
         frame_no += 1
         frame = imutils.resize(frame, width=TARGET_WIDTH)
@@ -106,40 +117,52 @@ def main():
         for event in events:
             # remove events not active for more than 5 frames
             if abs(event.last_changed - frame_no) > DROP_INACTIVE_TIME:
+                # Here we should save info if event is good enough
+                if event.magnitude() < EVENT_TRESHOLD:
+                    continue
+                start, end = event.path()
+                if euc_distance(start, end) < 20:
+                    results.append(save_event(event))
                 events.remove(event)
 
             idx += 1
-            if DRAW_PATH:
-                rect = event.path()
-                color = heatmap_color(len(event.positions), EVENT_TRESHOLD) if HEATMAP else (0, 255, 0)
-                cv2.line(frame, rect[0].tuple(), rect[1].tuple(), color, 3)
+            if SHOW:
+                if DRAW_PATH:
+                    rect = event.path()
+                    color = heatmap_color(len(event.positions), EVENT_TRESHOLD) if HEATMAP else (0, 255, 0)
+                    cv2.line(frame, rect[0].tuple(), rect[1].tuple(), color, 3)
 
-            if DRAW_BOX:
-                rect = event.bounding_rect()
-                cv2.rectangle(frame, rect[0].tuple(), rect[1].tuple(), (0, 255, 0), 2)
+                if DRAW_BOX:
+                    rect = event.bounding_rect()
+                    cv2.rectangle(frame, rect[0].tuple(), rect[1].tuple(), (0, 255, 0), 2)
 
-            if DRAW_CONFIDENCE:
-                cv2.putText(frame, f"Trigger count: {len(event.positions)}", rect[0].tuple(), cv2.FONT_HERSHEY_SIMPLEX,
-                            0.35, (0, 0, 255), 1)
+                if DRAW_CONFIDENCE:
+                    cv2.putText(frame, f"Trigger count: {len(event.positions)}", rect[0].tuple(),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                0.35, (0, 0, 255), 1)
 
         end_time = time.monotonic()
         time_sum += end_time - start_time
-        times.append(end_time - start_time)
+        # times.append(end_time - start_time)
+        print(f"Sped {(end_time - start_time):.3f}s, ({math.floor(1 / (end_time - start_time))}fps)", sep="")
+        sys.stdout.write('\r')
         if DRAW_STATS:
             cv2.putText(frame,
                         f"Frame time: {(end_time - start_time):.3f}s ({math.floor(1 / (end_time - start_time))}fps), average {time_sum / frame_no:.3f}s per frame",
                         (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 1)
 
-        if SHOW_RAW:
-            cv2.imshow("Raw", raw)
+        if SHOW:
+            if SHOW_RAW:
+                cv2.imshow("Raw", raw)
 
-        if SHOW_DELTA:
-            cv2.imshow("Threshold", thresh)
+            if SHOW_DELTA:
+                cv2.imshow("Threshold", thresh)
 
-        cv2.imshow("Annotated", frame)
+            cv2.imshow("Annotated", frame)
 
         # Get the pressed key
-        key = cv2.waitKey(1) & 0xFF
+        key = None
+        # key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
             # plt.plot(times)
             # plt.imsave("./frame_time")
@@ -153,7 +176,15 @@ def main():
             wait_time = wait_time + .02 if wait_time < 10 else 10
         if key == ord('r'):
             wait_time = 0
+    return results
 
 
 if __name__ == '__main__':
-    main()
+    from FileCrawler import crawl
+
+    res = crawl("/run/media/mateusz/Seagate Expansion Drive/20190330Subset/N1", analyze)
+    res = np.array(res)
+    res = np.concatenate(res,axis=0)
+    np.save("out.npy", np.array(res), allow_pickle=True)
+    plt.plot(res)
+    plt.show()
