@@ -79,3 +79,33 @@ void SimpleShow::imshow(const uint8_t *buff, size_t x, size_t y) {
     // render
     SDL_RenderPresent(renderer);
 }
+
+void SimpleShow::imshow_color(const uint8_t *buff, size_t x, size_t y) {
+    // convert the grayscale pixels to ARGB8888 format
+    long pixel_no = 0;
+    for (int i = 0; i < x * y; i++) {
+        data[i] = (0xff << 24);
+        data[i] |= (buff[pixel_no++] << 16);
+        data[i] |= (buff[pixel_no++] << 8);
+        data[i] |= buff[pixel_no++];
+    }
+
+    // should window be closed
+    bool close = false;
+
+    // create the trxture to store data from the pixel array
+    SDL_Texture *texture = SDL_CreateTexture(renderer,
+                                             SDL_PIXELFORMAT_ARGB8888,
+                                             SDL_TEXTUREACCESS_STATIC,
+                                             1920,
+                                             1080);
+
+    // copy data to the texture
+    SDL_UpdateTexture(texture, NULL, data, 1920 * sizeof(Uint32));
+
+    // copy texture to renderer
+    SDL_RenderCopy(renderer, texture, NULL, NULL);
+
+    // render
+    SDL_RenderPresent(renderer);
+}

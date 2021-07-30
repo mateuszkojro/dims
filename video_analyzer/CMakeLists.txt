@@ -82,9 +82,10 @@ set(CMAKE_CXX_FLAGS "-O3 -march=native")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 add_executable(video_analyzer main.cc)
-add_executable(ppm_frames split_into_ppm.cpp)
+add_executable(pbm_frames split_into_pbm.cpp)
 add_executable(raw_frames split_into_raw.cpp)
 add_executable(show_video show_video.cpp)
+add_executable(ppm_frames split_into_ppm.cpp)
 
 foreach (target ${TARGETS})
 

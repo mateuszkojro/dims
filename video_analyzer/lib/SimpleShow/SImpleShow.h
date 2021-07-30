@@ -22,6 +22,7 @@ public:
     /// \param x size in x dimention
     /// \param y size in y dimention
     void imshow(const uint8_t *data, size_t x, size_t y);
+    void imshow_color(const uint8_t *data, size_t x, size_t y);
 
 private:
     int width_;

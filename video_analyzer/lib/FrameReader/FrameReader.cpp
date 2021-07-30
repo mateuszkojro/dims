@@ -110,7 +110,7 @@ void mk::FrameReader::read_packets() {
 
 
         // We are specifing stride here to ignore values that are nor grayscale channel
-        current_frame_data_ = Eigen::Map<Eigen::Matrix<uint8_t, Eigen::Dynamic, Eigen::Dynamic>, 0, Eigen::InnerStride<3>>(
+        current_frame_data_ = Eigen::Map<Eigen::Matrix<uint8_t, Eigen::Dynamic, Eigen::Dynamic>, 0, Eigen::InnerStride<0>>(
                 current_frame_info_.data(), current_frame_info_.height(), current_frame_info_.width());
         TIME_STOP(frame_ffmpeg,"Frame eigen: ");
 

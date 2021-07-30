@@ -1,10 +1,4 @@
-//
-// Created by mateusz on 4/10/21.
-//
 
-//
-// Created by mateusz on 4/10/21.
-//
 
 #include "FrameReader.h"
 #include "SImpleShow.h"
@@ -17,8 +11,6 @@ public:
     ShowVideo() = default;
 
     SimpleShow show{1920,1080};
-    std::string out_path_;
-    size_t frame_counter = 0;
 
     void on_frame(FrameData &data) override {
         show.imshow(data.data(), data.cols(), data.rows());

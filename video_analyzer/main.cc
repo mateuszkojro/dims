@@ -7,6 +7,7 @@
 #include <string>
 
 #include "av.h"
+#include <thread>
 
 // API2
 #include "Logger.h"
@@ -27,7 +28,7 @@ public:
     SimpleShow show{1920,1080};
     FrameData last_frame;
 
-    std::string out_path_;
+    std::string out_path_ ;
     size_t frame_counter = 0;
 
     void on_frame(FrameData &data) override {
@@ -45,13 +46,17 @@ public:
 
         auto copy = data.transpose();
         auto result = copy;
-        for (size_t i = 0; i < data.size(); i++) {
+        for (auto i = 0; i < data.size(); i++) {
+//            if (last_frame(i) > 250 || copy(i) > 250){
+//                result(i) = 0;
+//            }
             if (last_frame(i) <= copy(i)) {
-                result(i) = copy(i) - last_frame(i);
+                result(i) =copy(i)-  last_frame(i);
             } else {
                 result(i) = 0;
             }
         }
+
 
         float max = result.maxCoeff();
         LOG("max: " + std::to_string(max));
@@ -67,6 +72,8 @@ public:
         show.imshow(result.data(), result.cols(), result.rows());
 
         last_frame = copy;
+
+        file.close();
     }
 
 };
