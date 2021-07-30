@@ -120,12 +120,13 @@ class TriggerInfo:
             return None
 
         # blend = 1 / len(frames)
-        result = frames[0]
+        # result = frames[0]
         #
         # for frame in fra  mes:
         #     result = cv2.addWeighted(result, blend, frame, blend, 0)
 
-        np.amax(frames, result, axis=1)
+        print(f"{np.ndim(frames)=}")
+        result = np.amax(frames, axis=1)
 
         return result
 
