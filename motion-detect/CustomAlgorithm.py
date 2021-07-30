@@ -144,7 +144,7 @@ class TriggerInfo:
             print("Empty frame")
             return
 
-        # frame = combined
+        frame = combined
 
         for point in self.event.positions:
             frame = cv2.circle(frame, point.center().tuple(), 1, (0, 255, 0), 1)
@@ -153,6 +153,7 @@ class TriggerInfo:
         left_top, right_bottom = self.bounding_box
         # Cut out the description
         frame = frame[left_top.y:right_bottom.y, left_top.x:right_bottom.x]
+
         plt.imshow(frame)
         plt.show()
 

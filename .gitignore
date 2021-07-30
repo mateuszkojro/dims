@@ -1,5 +1,8 @@
 # Project exclude paths
-/cmake-build-debug/
+*/cmake-build-debug/
 openCL/build
 my_avi_parser/build
 video_analyzer/build
+*/.idea
+*.npy
+*/.ipynb_checkpoints
