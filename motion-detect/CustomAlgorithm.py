@@ -147,7 +147,8 @@ class TriggerInfo:
         frame = combined
 
         for point in self.event.positions:
-            frame = cv2.circle(frame, point.center().tuple(), 1, (0, 255, 0), 1)
+            frame = cv2.circle(frame,
+                               point.center().tuple(), 1, (0, 255, 0), 1)
 
         frame = resize_frame(frame)
         left_top, right_bottom = self.bounding_box
@@ -160,7 +161,7 @@ class TriggerInfo:
 
 # @cache
 def euc_distance(pos1: Vec2, pos2: Vec2) -> float:
-    return math.sqrt((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2)
+    return math.sqrt((pos1.x - pos2.x)**2 + (pos1.y - pos2.y)**2)
 
 
 # Adapted form:
@@ -188,14 +189,12 @@ def heatmap_color(val, max_val):
 
 
 def save_event(event: Event):
-    return TriggerInfo(
-        filename=event.filename,
-        start_frame=event.first_point,
-        end_frame=event.last_changed,
-        magnitude=event.magnitude(),
-        bounding_box=event.bounding_rect(),
-        event=event
-    )
+    return TriggerInfo(filename=event.filename,
+                       start_frame=event.first_point,
+                       end_frame=event.last_changed,
+                       magnitude=event.magnitude(),
+                       bounding_box=event.bounding_rect(),
+                       event=event)
 
 
 def resize_frame(image, width=1920):
@@ -223,15 +222,18 @@ def get_contours(frame, reference_frame):
     # on threshold image
     thresh = cv2.dilate(thresh, None, iterations=2)
 
-    contours = cv2.findContours(thresh.copy(),
-                                cv2.RETR_EXTERNAL,
+    contours = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
                                 cv2.CHAIN_APPROX_SIMPLE)
     contours = imutils.grab_contours(contours)
 
     return contours
 
 
-def extract_events(contours, event_list, frame_number, filename, triger_treshold_area=5):
+def extract_events(contours,
+                   event_list,
+                   frame_number,
+                   filename,
+                   triger_treshold_area=5):
     for contour in contours:
         # if the contour is too small, ignore it
         if cv2.contourArea(contour) < triger_treshold_area:
@@ -249,7 +251,10 @@ def extract_events(contours, event_list, frame_number, filename, triger_treshold
             event_list.append(Event(new_event, filename=filename))
 
 
-def update_events(event_list, frame_number, drop_inactive_time=3, triger_treshold=5):
+def update_events(event_list,
+                  frame_number,
+                  drop_inactive_time=3,
+                  triger_treshold=5):
     triggers = []
     for event in event_list.copy():
         # remove events not active for more than 5 frames
@@ -281,21 +286,27 @@ def update_events(event_list, frame_number, drop_inactive_time=3, triger_treshol
     return triggers if len(triggers) > 0 else None
 
 
-def annotate_frame(frame, event_list, draw_path=True, draw_box=False, draw_confidence=True, heatmap=(0, 20)):
+def annotate_frame(frame,
+                   event_list,
+                   draw_path=True,
+                   draw_box=False,
+                   draw_confidence=True,
+                   heatmap=(0, 20)):
     for event in event_list:
         if draw_path:
             rect = event.path()
-            color = heatmap_color(len(event.positions), heatmap[1]) if heatmap else (0, 255, 0)
+            color = heatmap_color(len(event.positions),
+                                  heatmap[1]) if heatmap else (0, 255, 0)
             cv2.line(frame, rect[0].tuple(), rect[1].tuple(), color, 3)
 
         if draw_box:
             rect = event.bounding_rect()
-            cv2.rectangle(frame, rect[0].tuple(), rect[1].tuple(), (0, 255, 0), 2)
+            cv2.rectangle(frame, rect[0].tuple(), rect[1].tuple(), (0, 255, 0),
+                          2)
 
         if draw_confidence:
             cv2.putText(frame, f"{event.magnitude()}", rect[0].tuple(),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.35, (0, 0, 255), 1)
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 255), 1)
 
 
 def on_destroy():
