@@ -1,8 +1,10 @@
 import math
 import cv2
+import matplotlib.pyplot as plt
 from dataclasses import dataclass, astuple
 from functools import cache
 import imutils
+import numpy as np
 
 
 @dataclass(unsafe_hash=True)
@@ -40,19 +42,21 @@ class EventInfo:
 class Event:
     positions: [EventInfo]
     last_changed: int = 0
+    filename: str
 
-    def __init__(self, position: EventInfo):
+    def __init__(self, position: EventInfo, filename):
         self.positions = []
         self.positions.append(position)
         self.first_point = position.frame_no
         self.last_changed = position.frame_no
+        self.filename = filename
 
     # TODO: This should be done using that
     #  https://docs.opencv.org/3.1.0/dd/d49/tutorial_py_contour_features.html
     @cache
     def bounding_rect(self) -> (int, int):
-        min_x, min_y = self.positions[0].center()
-        max_x, max_y = self.positions[0].center()
+        min_x, min_y = self.positions[0].center().tuple()
+        max_x, max_y = self.positions[0].center().tuple()
         for item in self.positions:
             event = item.center()
             if event.x < min_x:
@@ -101,6 +105,55 @@ class Event:
         return euc_distance(start, stop)
 
 
+@dataclass(frozen=True)
+class TriggerInfo:
+    event: Event
+    filename: str
+    start_frame: int
+    start_frame: int
+    end_frame: int
+    magnitude: int
+    bounding_box: (Vec2, Vec2)
+
+    def combine_frames(self, frames):
+        if len(frames) == 0:
+            return None
+
+        # blend = 1 / len(frames)
+        result = frames[0]
+        #
+        # for frame in fra  mes:
+        #     result = cv2.addWeighted(result, blend, frame, blend, 0)
+
+        np.amax(frames, result, axis=1)
+
+        return result
+
+    def show(self):
+        frames = []
+        capture = cv2.VideoCapture(self.filename)
+        capture.set(cv2.CAP_PROP_POS_FRAMES, self.start_frame)
+        for i in range(self.end_frame - self.start_frame):
+            status, frame = capture.read()
+            frames.append(frame)
+
+        combined = self.combine_frames(frames)
+
+        if combined is None:
+            print("Empty frame")
+            return
+
+        for point in self.event.positions:
+            frame = cv2.circle(frame, point.center().tuple(), 1, (0, 255, 0), 1)
+
+        frame = resize_frame(frame)
+        left_top, right_bottom = self.bounding_box
+        # Cut out the description
+        frame = frame[left_top.y:right_bottom.y, left_top.x:right_bottom.x]
+        plt.imshow(frame)
+        plt.show()
+
+
 # @cache
 def euc_distance(pos1: Vec2, pos2: Vec2) -> float:
     return math.sqrt((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2)
@@ -131,7 +184,14 @@ def heatmap_color(val, max_val):
 
 
 def save_event(event: Event):
-    return event.magnitude()
+    return TriggerInfo(
+        filename=event.filename,
+        start_frame=event.first_point,
+        end_frame=event.last_changed,
+        magnitude=event.magnitude(),
+        bounding_box=event.bounding_rect(),
+        event=event
+    )
 
 
 def resize_frame(image, width=1920):
@@ -167,7 +227,7 @@ def get_contours(frame, reference_frame):
     return contours
 
 
-def extract_events(contours, event_list, frame_number, triger_treshold_area=5):
+def extract_events(contours, event_list, frame_number, filename, triger_treshold_area=5):
     for contour in contours:
         # if the contour is too small, ignore it
         if cv2.contourArea(contour) < triger_treshold_area:
@@ -182,7 +242,7 @@ def extract_events(contours, event_list, frame_number, triger_treshold_area=5):
             if event.add_if_similar(new_event):
                 was_added = True
         if not was_added:
-            event_list.append(Event(new_event))
+            event_list.append(Event(new_event, filename=filename))
 
 
 def update_events(event_list, frame_number, drop_inactive_time=3, triger_treshold=5):
@@ -204,10 +264,9 @@ def update_events(event_list, frame_number, drop_inactive_time=3, triger_treshol
                 event_list.remove(event)
                 continue
 
-            print("Found ok trigger")
+            # print("Found ok trigger")
             triggers.append(save_event(event))
             event_list.remove(event)
-    print(f"Triggers {triggers=}")
     return triggers if len(triggers) > 0 else None
 
 
@@ -226,6 +285,7 @@ def annotate_frame(frame, event_list, draw_path=True, draw_box=False, draw_confi
             cv2.putText(frame, f"{event.magnitude()}", rect[0].tuple(),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         0.35, (0, 0, 255), 1)
+
 
 def on_destroy():
     pass

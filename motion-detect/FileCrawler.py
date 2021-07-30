@@ -15,11 +15,11 @@ def crawl(path, function, extension=".avi"):
             ext = os.path.splitext(abs_path)[-1]
             if ext == extension:
                 result += function(abs_path)
-        if i == 4:
+        if i == 20:
             break
     return result
 
-    
+
 if __name__ == '__main__':
     f = lambda file: print(file)
     crawl(".", f)

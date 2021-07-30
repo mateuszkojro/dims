@@ -35,6 +35,9 @@ def analyze(path):
     triggers = []
     events: [Event] = []
     frame_number = 0
+    # image = cv2.imread(path[:-4] + "M.bmp")
+    # image = imutils.resize(image, width=600)
+    # cv2.imshow("Ufo capture", image)
     video_capture = cv2.VideoCapture(path)
     reference_frame = None
     while True:
@@ -56,7 +59,7 @@ def analyze(path):
 
         contours = get_contours(preprocessed, reference_frame)
 
-        extract_events(contours, events, frame_number)
+        extract_events(contours, events, frame_number, filename=path)
 
         new_triggers = update_events(events, frame_number)
 
@@ -64,7 +67,8 @@ def analyze(path):
             triggers += new_triggers
 
         annotate_frame(resized_frame, events)
-        cv2.imshow("Preview", resized_frame)
+        preview = imutils.resize(resized_frame, width=900)
+        cv2.imshow("Preview", preview)
 
         frame_number += 1
         # Get the pressed key
@@ -80,8 +84,8 @@ if __name__ == '__main__':
     from FileCrawler import crawl
 
     res = crawl("/run/media/mateusz/Seagate Expansion Drive/20190330Subset/N1", analyze)
-    print(f"{res=}")
     res = np.array(res, dtype=object).flatten()
     np.save("out.npy", res, allow_pickle=True)
-    plt.plot(res)
-    plt.show()
+
+    import random
+    random.choice(res).show()
