@@ -1,3 +1,5 @@
+import os.path
+
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -84,13 +86,18 @@ def analyze_file(path):
     # plt.errorbar(data[0], data[1], yerr=[lower, upper], fmt='^', color='black',
     #              ecolor='lightgray', elinewidth=1, capsize=4)
     plt.title(PATH)
-    plt.savefig(f"{PATH}.plot.png")
+    plt.ylabel("Pixel brightness(0-255)")
+    plt.xlabel("Frame number")
+    plt.savefig(f"{PLOTS_DIRS}/{PATH}.plot.png")
     plt.show()
     return calc_avg(data[1]), (max(data[0]), min(data[0])), path
 
 
+PLOTS_DIRS = "./plots"
 if __name__ == '__main__':
     with open('videos.txt') as f:
+        if not os.path.isdir(PLOTS_DIRS):
+            os.mkdir(PLOTS_DIRS)
         all = []
         paths = []
         errorsL = []
@@ -107,10 +114,13 @@ if __name__ == '__main__':
 
         plt.errorbar([x for x in range(len(all))], all, yerr=[errorsU, errorsL], fmt='x', color='black', elinewidth=1,
                      capsize=4)
-        plt.xlabel("analyzed files")
+        plt.xlabel("File name")
+        plt.ylabel("Average pixel brightness (0-255)")
         plt.xticks(rotation='vertical')
-        plt.bar([x for x in range(len(all))],all,tick_label=paths)
-        plt.title("out")
+        plt.bar([x for x in range(len(all))], all, tick_label=paths)
+        plt.title('Average brightness of specified area \n in different video clips (with different settings)')
         plt.tight_layout()
         plt.savefig(f"out.plot.png")
         plt.show()
+        np.array([all, paths, errorsL, errorsU])
+        np.save("data.npy")
