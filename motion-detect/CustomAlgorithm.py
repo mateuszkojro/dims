@@ -311,3 +311,6 @@ def annotate_frame(frame,
 
 def on_destroy():
     pass
+
+def new_func(arg):
+    print(arg + "elson")
