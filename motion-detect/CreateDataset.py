@@ -61,10 +61,10 @@ def analyze(path):
         new_triggers = update_events(events, frame_number)
 
         if new_triggers is not None:
-            triggers.append(new_triggers)
+            triggers += new_triggers
 
         annotate_frame(resized_frame, events)
-        cv2.imshow(path, resized_frame)
+        cv2.imshow("Preview", resized_frame)
 
         frame_number += 1
         # Get the pressed key
@@ -81,8 +81,7 @@ if __name__ == '__main__':
 
     res = crawl("/run/media/mateusz/Seagate Expansion Drive/20190330Subset/N1", analyze)
     print(f"{res=}")
-    res = np.array(res)
-    res = np.concatenate(res, axis=0)
-    np.save("out.npy", np.array(res), allow_pickle=True)
+    res = np.array(res, dtype=object).flatten()
+    np.save("out.npy", res, allow_pickle=True)
     plt.plot(res)
     plt.show()

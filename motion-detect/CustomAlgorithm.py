@@ -187,28 +187,28 @@ def extract_events(contours, event_list, frame_number, triger_treshold_area=5):
 
 def update_events(event_list, frame_number, drop_inactive_time=3, triger_treshold=5):
     triggers = []
-    for event in event_list:
+    for event in event_list.copy():
         # remove events not active for more than 5 frames
         if abs(event.last_changed - frame_number) > drop_inactive_time:
             # Here we should save info if event is good enough
 
             if event.magnitude() < triger_treshold:
                 event_list.remove(event)
-                return None
+                continue
 
-            # if event.lenght() < 20:
-            #     event_list.remove(event)
-            #     return None
+            if event.lenght() < 10:
+                event_list.remove(event)
+                continue
 
-            # if event.too_slow():
-            #     event_list.remove(event)
-            #     return None
+            if event.too_slow():
+                event_list.remove(event)
+                continue
 
             print("Found ok trigger")
             triggers.append(save_event(event))
             event_list.remove(event)
-
-    return triggers
+    print(f"Triggers {triggers=}")
+    return triggers if len(triggers) > 0 else None
 
 
 def annotate_frame(frame, event_list, draw_path=True, draw_box=False, draw_confidence=True, heatmap=(0, 20)):

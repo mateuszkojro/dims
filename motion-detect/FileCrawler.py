@@ -14,12 +14,12 @@ def crawl(path, function, extension=".avi"):
             print(f"Analyzing file {i}/{size} ({i/size * 100}%)")
             ext = os.path.splitext(abs_path)[-1]
             if ext == extension:
-                result.append(function(abs_path))
-        if i == 15:
+                result += function(abs_path)
+        if i == 4:
             break
     return result
 
-
+    
 if __name__ == '__main__':
     f = lambda file: print(file)
-    crawl("test", f)
+    crawl(".", f)
