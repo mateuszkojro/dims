@@ -144,6 +144,8 @@ class TriggerInfo:
             print("Empty frame")
             return
 
+        # frame = combined
+
         for point in self.event.positions:
             frame = cv2.circle(frame, point.center().tuple(), 1, (0, 255, 0), 1)
 
@@ -261,9 +263,16 @@ def update_events(event_list, frame_number, drop_inactive_time=3, triger_treshol
                 event_list.remove(event)
                 continue
 
+            # real event will be on more than one frame
+            if event.last_changed - event.first_point < 3:
+                event_list.remove(event)
+                continue
+
             if event.too_slow():
                 event_list.remove(event)
                 continue
+
+            # TODO: Check how close to a line is it
 
             # print("Found ok trigger")
             triggers.append(save_event(event))

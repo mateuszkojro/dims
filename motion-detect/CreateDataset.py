@@ -6,6 +6,7 @@ import imutils
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
+import pandas as pd
 
 from CustomAlgorithm import *
 
@@ -31,7 +32,7 @@ DROP_INACTIVE_TIME = 3
 EVENT_TRESHOLD = 10
 
 
-def analyze(path):
+def analyze(path, debug=False):
     triggers = []
     events: [Event] = []
     frame_number = 0
@@ -66,16 +67,17 @@ def analyze(path):
         if new_triggers is not None:
             triggers += new_triggers
 
-        annotate_frame(resized_frame, events)
-        preview = imutils.resize(resized_frame, width=900)
-        cv2.imshow("Preview", preview)
+        if debug:
+            annotate_frame(resized_frame, events)
+            preview = imutils.resize(resized_frame, width=900)
+            cv2.imshow("Preview", preview)
+            # Get the pressed key
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
+                on_destroy()
+                break
 
         frame_number += 1
-        # Get the pressed key
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord('q'):
-            on_destroy()
-            break
 
     return triggers
 
@@ -83,9 +85,19 @@ def analyze(path):
 if __name__ == '__main__':
     from FileCrawler import crawl
 
-    res = crawl("/run/media/mateusz/Seagate Expansion Drive/20190330Subset/N1", analyze)
-    res = np.array(res, dtype=object).flatten()
-    np.save("out.npy", res, allow_pickle=True)
+    all_triggers = crawl("/run/media/mateusz/Seagate Expansion Drive/20190330Subset/N1", analyze)
+    all_triggers: [TriggerInfo] = np.array(all_triggers, dtype=object).flatten()
 
-    import random
-    random.choice(res).show()
+    np.save("out.npy", all_triggers, allow_pickle=True)
+    rows = []
+    for trigger in all_triggers:
+        start, end = trigger.bounding_box
+        rows.append(
+            [trigger.filename, trigger.start_frame, trigger.end_frame, start.x, start.y, end.x, end.y,
+             trigger.magnitude])
+
+    df = pd.DataFrame(
+        data=rows,
+        columns=[["file", "start_frame", "end_frame", "box_up_left_x", "box_up_left_y", "box_down_right_x",
+                  "box_down_right_y", "count"]])
+    df
