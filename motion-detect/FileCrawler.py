@@ -1,23 +1,27 @@
 import os
 
+
 def get_ext(path):
     return os.path.splitext(path)[-1]
+
 
 def crawl(path, function, extension=".avi"):
     result = []
     size = len([file for file in os.listdir(path) if get_ext(file) == ".avi"])
-    for i, obj in enumerate(os.listdir(path)):
+    i = 0
+    for obj in os.listdir(path):
 
         abs_path = os.path.abspath(path + "/" + obj)
         if os.path.isdir(abs_path):
             print("Hello there")
             result += crawl(abs_path, function)
         else:
-            print(f"Analyzing file {i}/{size} ({i/size * 100}%)")
             # ext = os.path.splitext(abs_path)[-1]
             if get_ext(abs_path) == extension:
+                print(f"Analyzing file {i}/{size} ({i / size * 100:2}%)")
                 result += function(abs_path)
-        if i == 20:
+                i += 1
+        if i == 6:
             break
     return result
 
