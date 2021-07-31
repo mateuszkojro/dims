@@ -1,5 +1,6 @@
 import math
 import cv2
+from typing import NoReturn, Tuple, List
 import matplotlib.pyplot as plt
 from dataclasses import dataclass, astuple
 from functools import cache
@@ -13,7 +14,7 @@ class Vec2:
     y: int
 
     @cache
-    def tuple(self):
+    def tuple(self) -> Tuple[int]:
         return astuple(self)
 
 
@@ -24,7 +25,7 @@ class EventInfo:
     size: Vec2
 
     @cache
-    def center(self):
+    def center(self) -> Vec2:
         x = self.position.x + (self.size.x / 2)
         y = self.position.y + (self.size.y / 2)
         return Vec2(int(x), int(y))
@@ -40,7 +41,7 @@ class EventInfo:
 
 
 class Event:
-    positions: [EventInfo]
+    positions: List[EventInfo]
     last_changed: int = 0
     filename: str
 
@@ -54,7 +55,7 @@ class Event:
     # TODO: This should be done using that
     #  https://docs.opencv.org/3.1.0/dd/d49/tutorial_py_contour_features.html
     @cache
-    def bounding_rect(self) -> (int, int):
+    def bounding_rect(self) -> Tuple[Vec2]:
         min_x, min_y = self.positions[0].center().tuple()
         max_x, max_y = self.positions[0].center().tuple()
         for item in self.positions:
@@ -71,7 +72,7 @@ class Event:
         maximal = Vec2(math.floor(max_x), math.floor(max_y))
         return minimal, maximal
 
-    def path(self) -> (Vec2, Vec2):
+    def path(self) -> Tuple[Vec2]:
         start = self.positions[0].position
         end = self.positions[-1].position
         return start, end
@@ -113,7 +114,7 @@ class TriggerInfo:
     start_frame: int
     end_frame: int
     magnitude: int
-    bounding_box: (Vec2, Vec2)
+    bounding_box: Tuple[Vec2]
 
     def combine_frames(self, frames):
         if len(frames) == 0:
@@ -130,7 +131,7 @@ class TriggerInfo:
 
         return result
 
-    def show(self):
+    def show(self) -> None:
         frames = []
         capture = cv2.VideoCapture(self.filename)
         capture.set(cv2.CAP_PROP_POS_FRAMES, self.start_frame)
@@ -161,34 +162,34 @@ class TriggerInfo:
 
 # @cache
 def euc_distance(pos1: Vec2, pos2: Vec2) -> float:
-    return math.sqrt((pos1.x - pos2.x)**2 + (pos1.y - pos2.y)**2)
+    return math.sqrt((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2)
 
 
 # Adapted form:
 # https://www.andrewnoske.com/wiki/Code_-_heatmaps_and_color_gradients
-def heatmap_color(val, max_val):
+def heatmap_color(val, max_val) -> Tuple[int]:
     val = val / max_val
     NUM_COLORS = 2
     color = [[0, 0, 1], [0, 1, 0], [1, 0, 0]]
-    fractBetween = 0
+    frac_between = 0
     if val <= 0:
-        idx1 = idx2 = 0  # ;} // accounts for an input <= 0
+        idx1 = idx2 = 0  # accounts for an input <= 0
     elif val >= 1:
         idx1 = idx2 = NUM_COLORS  # accounts for an input >= 0
     else:
         val = val * NUM_COLORS
         idx1 = math.floor(val)
-        fractBetween = val - float(idx1)
+        frac_between = val - float(idx1)
         idx2 = idx1 + 1
 
-    red = (color[idx2][0] - color[idx1][0]) * fractBetween + color[idx1][0]
-    green = (color[idx2][1] - color[idx1][1]) * fractBetween + color[idx1][1]
-    blue = (color[idx2][2] - color[idx1][2]) * fractBetween + color[idx1][2]
+    red = (color[idx2][0] - color[idx1][0]) * frac_between + color[idx1][0]
+    green = (color[idx2][1] - color[idx1][1]) * frac_between + color[idx1][1]
+    blue = (color[idx2][2] - color[idx1][2]) * frac_between + color[idx1][2]
 
     return blue * 255, green * 255, red * 255
 
 
-def save_event(event: Event):
+def save_event(event: Event) -> TriggerInfo:
     return TriggerInfo(filename=event.filename,
                        start_frame=event.first_point,
                        end_frame=event.last_changed,
@@ -224,6 +225,7 @@ def get_contours(frame, reference_frame):
 
     contours = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
                                 cv2.CHAIN_APPROX_SIMPLE)
+
     contours = imutils.grab_contours(contours)
 
     return contours
@@ -233,10 +235,11 @@ def extract_events(contours,
                    event_list,
                    frame_number,
                    filename,
-                   triger_treshold_area=5):
+                   trigger_treshold_area=5):
+
     for contour in contours:
         # if the contour is too small, ignore it
-        if cv2.contourArea(contour) < triger_treshold_area:
+        if cv2.contourArea(contour) < trigger_treshold_area:
             return
         # compute the bounding box for the contour
         (x, y, w, h) = cv2.boundingRect(contour)
@@ -253,37 +256,40 @@ def extract_events(contours,
 
 def update_events(event_list,
                   frame_number,
-                  drop_inactive_time=3,
-                  triger_treshold=5):
+                  drop_inactive_time=3):
     triggers = []
     for event in event_list.copy():
         # remove events not active for more than 5 frames
         if abs(event.last_changed - frame_number) > drop_inactive_time:
+
             # Here we should save info if event is good enough
-
-            if event.magnitude() < triger_treshold:
-                event_list.remove(event)
-                continue
-
-            if event.lenght() < 10:
-                event_list.remove(event)
-                continue
-
-            # real event will be on more than one frame
-            if event.last_changed - event.first_point < 3:
-                event_list.remove(event)
-                continue
-
-            if event.too_slow():
+            if is_good_trigger(event):
                 event_list.remove(event)
                 continue
 
             # TODO: Check how close to a line is it
-
-            # print("Found ok trigger")
             triggers.append(save_event(event))
             event_list.remove(event)
+
     return triggers if len(triggers) > 0 else None
+
+
+def is_good_trigger(event, trigger_treshold=5):
+    if event.magnitude() < trigger_treshold:
+        return False
+
+    if event.lenght() < 10:
+        return False
+
+    # real event will be on more than one frame
+    if event.last_changed - event.first_point < 3:
+        return False
+
+    if event.too_slow():
+        return False
+
+    # TODO: Check how close to a line is it
+    return True
 
 
 def annotate_frame(frame,
@@ -309,8 +315,11 @@ def annotate_frame(frame,
                         cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 255), 1)
 
 
-def on_destroy():
-    pass
+def on_destroy(event_list):
+    triggers = []
+    for event in event_list.copy():
+        if not is_good_trigger(event):
+            event_list.remove(event)
+            continue
 
-def new_func(arg):
-    print(arg + "elson")
+    return triggers if len(triggers) > 0 else None
