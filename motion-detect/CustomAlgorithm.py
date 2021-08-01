@@ -116,7 +116,8 @@ class TriggerInfo:
     magnitude: int
     bounding_box: Tuple[Vec2]
 
-    def combine_frames(self, frames):
+    @staticmethod
+    def combine_frames(frames):
         if len(frames) == 0:
             return None
 
@@ -236,7 +237,6 @@ def extract_events(contours,
                    frame_number,
                    filename,
                    trigger_treshold_area=5):
-
     for contour in contours:
         # if the contour is too small, ignore it
         if cv2.contourArea(contour) < trigger_treshold_area:
@@ -299,8 +299,8 @@ def annotate_frame(frame,
                    draw_confidence=True,
                    heatmap=(0, 20)):
     for event in event_list:
+        rect = event.path()
         if draw_path:
-            rect = event.path()
             color = heatmap_color(len(event.positions),
                                   heatmap[1]) if heatmap else (0, 255, 0)
             cv2.line(frame, rect[0].tuple(), rect[1].tuple(), color, 3)

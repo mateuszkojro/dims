@@ -1,14 +1,13 @@
-#! /usr/bin/python3
+#!/usr/bin/python3
 
 import cv2
-import time
 import imutils
 import matplotlib.pyplot as plt
 import numpy as np
-import sys
 import pandas as pd
 
 from CustomAlgorithm import *
+from typing import List
 
 SHOW = False
 INPUT_PATH = "./file.avi"
@@ -32,13 +31,16 @@ DROP_INACTIVE_TIME = 3
 EVENT_TRESHOLD = 10
 
 
+def show_coresponding_image(path):
+    image = cv2.imread(path[:-4] + "M.bmp")
+    image = imutils.resize(image, width=600)
+    cv2.imshow("Ufo capture", image)
+
+
 def analyze(path, debug=False):
     triggers = []
-    events: [Event] = []
+    events: List[Event] = []
     frame_number = 0
-    # image = cv2.imread(path[:-4] + "M.bmp")
-    # image = imutils.resize(image, width=600)
-    # cv2.imshow("Ufo capture", image)
     video_capture = cv2.VideoCapture(path)
     reference_frame = None
     while True:
@@ -85,19 +87,25 @@ def analyze(path, debug=False):
 if __name__ == '__main__':
     from FileCrawler import crawl
 
-    all_triggers = crawl("/run/media/mateusz/Seagate Expansion Drive/20190330Subset/N1", analyze)
-    all_triggers: [TriggerInfo] = np.array(all_triggers, dtype=object).flatten()
+    all_triggers = crawl(
+        "/run/media/mateusz/Seagate Expansion Drive/20190330Subset/N1",
+        analyze)
+    all_triggers: List[TriggerInfo] = np.array(all_triggers,
+                                               dtype=object).flatten()
 
     np.save("out.npy", all_triggers, allow_pickle=True)
     rows = []
     for trigger in all_triggers:
         start, end = trigger.bounding_box
-        rows.append(
-            [trigger.filename, trigger.start_frame, trigger.end_frame, start.x, start.y, end.x, end.y,
-             trigger.magnitude])
+        rows.append([
+            trigger.filename, trigger.start_frame, trigger.end_frame, start.x,
+            start.y, end.x, end.y, trigger.magnitude
+        ])
 
-    df = pd.DataFrame(
-        data=rows,
-        columns=[["file", "start_frame", "end_frame", "box_up_left_x", "box_up_left_y", "box_down_right_x",
-                  "box_down_right_y", "count"]])
+    df = pd.DataFrame(data=rows,
+                      columns=[[
+                          "file", "start_frame", "end_frame", "box_up_left_x",
+                          "box_up_left_y", "box_down_right_x",
+                          "box_down_right_y", "count"
+                      ]])
     df
