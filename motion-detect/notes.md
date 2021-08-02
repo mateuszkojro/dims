@@ -1,10 +1,11 @@
+# Ideas
+
+## Check how acuratly we can fit the line between points in cluster
+
+
 __*Normally, Hough Transform is used for line detection.*__
 
 But if it doesn't work for you, fitting line is also a good alternative.
-
-Check OpenCV fitline function for more details and parameters.
-
-Since you have already tried hough lines, I will demonstrate fitting line here, using OpenCV-Python :
 
 ```python
 import cv2
@@ -28,3 +29,8 @@ cv2.imshow('img',img)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 ```
+
+## Create polygon and check if the point is within bounds
+
+- <https://users.fmrib.ox.ac.uk/~steve/asset/asset2/node6.html>
+- <https://www.researchgate.net/publication/221575507_A_Novel_Automatic_Cluster_Tracking_Algorithm>
