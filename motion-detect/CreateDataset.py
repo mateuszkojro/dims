@@ -6,31 +6,11 @@ import imutils
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
+from FileCrawler import crawl
 from CustomAlgorithm import *
 from typing import List
 
-SHOW = False
-INPUT_PATH = "./file.avi"
-SHOW_RAW = True
-SHOW_DELTA = True
-
-DRAW_BOX = False
-DRAW_PATH = True
-DRAW_STATS = True
-DRAW_CONFIDENCE = True
-HEATMAP = True
-
-TARGET_WIDTH = 1920
-
-WITH_GAUSS = True
-GAUSS_SIGMA = (3, 3)
-
-TRIGER_AREA_TRESHOLD = 5
-DROP_INACTIVE_TIME = 3
-
-EVENT_TRESHOLD = 10
-
+import os
 
 def show_coresponding_image(path):
     image = cv2.imread(path[:-4] + "M.bmp")
@@ -50,7 +30,9 @@ def analyze(path, debug=False):
         status, frame = video_capture.read()
 
         if not status:
-            on_destroy()
+            new_triggers = on_destroy(events)
+            if new_triggers is not None:
+                triggers += new_triggers
             break
 
         resized_frame = resize_frame(frame)
@@ -73,34 +55,47 @@ def analyze(path, debug=False):
 
         if debug:
             annotate_frame(resized_frame, events)
-            preview = imutils.resize(resized_frame, width=900)
+            preview = imutils.resize(resized_frame, width=1500)
             cv2.imshow("Preview", preview)
             # Get the pressed key
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
-                on_destroy()
+                new_events = on_destroy(events)
+                if new_events is not None:
+                    triggers = new_events
                 break
 
         frame_number += 1
 
         now = time.monotonic()
+        # if file takes more than 5 minutes stop
         if now - start_time > 5 * 60:
-            print(f"ERR: Analyzing frame took too long stopping ({path})")
+            print(f"ERR: Analyzing file took too long - stopping ({path})")
+            new_triggers = on_destroy(events)
+            if new_triggers is not None:
+                triggers += new_triggers
             break
-            
+
+    video_capture.release()
+    cv2.destroyAllWindows()
     return triggers
 
-
 if __name__ == '__main__':
-    from FileCrawler import crawl
+    debug = False
+    if "DEBUG" in os.environ:
+        debug = int(os.environ["DEBUG"])
+        print(f"Show debug infromation: {bool(debug)}")
+        
 
     all_triggers = crawl(
         "/run/media/mateusz/Seagate Expansion Drive/20190330Subset/N1",
-        analyze)
+        analyze, debug=debug)
+    
     all_triggers: List[TriggerInfo] = np.array(all_triggers,
                                                dtype=object).flatten()
 
     np.save("out.npy", all_triggers, allow_pickle=True)
+    
     rows = []
     for trigger in all_triggers:
         start, end = trigger.bounding_box
@@ -115,4 +110,5 @@ if __name__ == '__main__':
                           "box_up_left_y", "box_down_right_x",
                           "box_down_right_y", "count"
                       ]])
-    df
+
+    df.to_csv("out.csv")
