@@ -11,6 +11,7 @@ from CustomAlgorithm import *
 from typing import List
 
 import os
+import sys
 
 def show_coresponding_image(path):
     image = cv2.imread(path[:-4] + "M.bmp")
@@ -85,30 +86,29 @@ if __name__ == '__main__':
     if "DEBUG" in os.environ:
         debug = int(os.environ["DEBUG"])
         print(f"Show debug infromation: {bool(debug)}")
-        
+
+    path = sys.argv[1]
+    if path is None:
+        path = "/run/media/mateusz/Seagate Expansion Drive/20190330Subset/N1"
 
     all_triggers = crawl(
-        "/run/media/mateusz/Seagate Expansion Drive/20190330Subset/N1",
+        path,
         analyze, debug=debug)
-    
+
     all_triggers: List[TriggerInfo] = np.array(all_triggers,
                                                dtype=object).flatten()
 
     np.save("out.npy", all_triggers, allow_pickle=True)
-    
+
     rows = []
     for trigger in all_triggers:
         start, end = trigger.bounding_box
-        rows.append([
-            trigger.filename, trigger.start_frame, trigger.end_frame, start.x,
-            start.y, end.x, end.y, trigger.magnitude
-        ])
+    rows.append(
+        [trigger.filename, trigger.start_frame, trigger.end_frame, start.x, start.y, end.x, end.y,trigger.length ,trigger.magnitude])
 
-    df = pd.DataFrame(data=rows,
-                      columns=[[
-                          "file", "start_frame", "end_frame", "box_up_left_x",
-                          "box_up_left_y", "box_down_right_x",
-                          "box_down_right_y", "count"
-                      ]])
+    df = pd.DataFrame(
+        data=rows,
+        columns=["file", "start_frame", "end_frame", "box_up_left_x", "box_up_left_y", "box_down_right_x",
+                  "box_down_right_y","length" ,"count"])
 
     df.to_csv("out.csv")
