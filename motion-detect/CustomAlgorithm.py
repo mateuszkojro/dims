@@ -109,8 +109,8 @@ class Event:
 @dataclass(frozen=True)
 class TriggerInfo:
     event: Event
+    length: str
     filename: str
-    start_frame: int
     start_frame: int
     end_frame: int
     magnitude: int
@@ -146,7 +146,7 @@ class TriggerInfo:
             print("Empty frame")
             return
 
-        frame = combined
+        # frame = combined
 
         for point in self.event.positions:
             frame = cv2.circle(frame,
@@ -155,7 +155,7 @@ class TriggerInfo:
         frame = resize_frame(frame)
         left_top, right_bottom = self.bounding_box
         # Cut out the description
-        frame = frame[left_top.y:right_bottom.y, left_top.x:right_bottom.x]
+        # frame = frame[left_top.y:right_bottom.y, left_top.x:right_bottom.x]
 
         plt.imshow(frame)
         plt.show()
@@ -192,6 +192,7 @@ def heatmap_color(val, max_val) -> Tuple[int]:
 
 def save_event(event: Event) -> TriggerInfo:
     return TriggerInfo(filename=event.filename,
+                       length=event.lenght(),
                        start_frame=event.first_point,
                        end_frame=event.last_changed,
                        magnitude=event.magnitude(),
@@ -207,7 +208,7 @@ def resize_frame(image, width=1920):
     w = image.shape[1]
 
     # Cut out the description
-    image = image[y:(h - 20), x:w]
+    image = image[y:(h - 30), x:w]
     return image
 
 
@@ -237,6 +238,7 @@ def extract_events(contours,
                    frame_number,
                    filename,
                    trigger_treshold_area=5):
+
     for contour in contours:
         # if the contour is too small, ignore it
         if cv2.contourArea(contour) < trigger_treshold_area:
@@ -263,7 +265,7 @@ def update_events(event_list,
         if abs(event.last_changed - frame_number) > drop_inactive_time:
 
             # Here we should save info if event is good enough
-            if is_good_trigger(event):
+            if not is_good_trigger(event):
                 event_list.remove(event)
                 continue
 
@@ -275,18 +277,19 @@ def update_events(event_list,
 
 
 def is_good_trigger(event, trigger_treshold=5):
-    if event.magnitude() < trigger_treshold:
-        return False
+    #
+    # if event.magnitude() < trigger_treshold:
+    #     return False
 
-    if event.lenght() < 10:
+    if event.lenght() < 20:
         return False
 
     # real event will be on more than one frame
     if event.last_changed - event.first_point < 3:
         return False
-
-    if event.too_slow():
-        return False
+    #
+    # if event.too_slow():
+    #     return False
 
     # TODO: Check how close to a line is it
     return True
@@ -301,7 +304,7 @@ def annotate_frame(frame,
     for event in event_list:
         rect = event.path()
         if draw_path:
-            color = heatmap_color(len(event.positions),
+            color = heatmap_color(event.lenght(),
                                   heatmap[1]) if heatmap else (0, 255, 0)
             cv2.line(frame, rect[0].tuple(), rect[1].tuple(), color, 3)
 
@@ -311,15 +314,20 @@ def annotate_frame(frame,
                           2)
 
         if draw_confidence:
-            cv2.putText(frame, f"{event.magnitude()}", rect[0].tuple(),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 255), 1)
+            cv2.putText(frame, f"{event.lenght():1f}q", rect[0].tuple(),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.35, (100, 0, 0), 1)
 
 
 def on_destroy(event_list):
     triggers = []
     for event in event_list.copy():
-        if not is_good_trigger(event):
-            event_list.remove(event)
-            continue
+        if is_good_trigger(event):
+            triggers.append(save_event(event))
 
     return triggers if len(triggers) > 0 else None
+
+
+class Analyzer:
+
+    def __init__(self):
+        pass
