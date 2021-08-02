@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import time
 
 import cv2
 import imutils
@@ -43,6 +44,7 @@ def analyze(path, debug=False):
     frame_number = 0
     video_capture = cv2.VideoCapture(path)
     reference_frame = None
+    start_time = time.monotonic()
     while True:
 
         status, frame = video_capture.read()
@@ -81,6 +83,11 @@ def analyze(path, debug=False):
 
         frame_number += 1
 
+        now = time.monotonic()
+        if now - start_time > 5 * 60:
+            print(f"ERR: Analyzing frame took too long stopping ({path})")
+            break
+            
     return triggers
 
 
