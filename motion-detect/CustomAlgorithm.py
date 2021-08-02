@@ -117,6 +117,19 @@ class TriggerInfo:
     bounding_box: Tuple[Vec2]
 
     @staticmethod
+    def from_csv_row(row):
+        row = row[1:]
+        return TriggerInfo(
+            filename=row[0],
+            start_frame=int(row[1]),
+            end_frame=int(row[2]),
+            bounding_box=(Vec2(row[3],row[4]), Vec2(row[5],row[6])),
+            length=row[7],
+            magnitude=row[8],
+            event=None
+        )
+
+    @staticmethod
     def combine_frames(frames):
         if len(frames) == 0:
             return None
