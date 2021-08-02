@@ -1,6 +1,6 @@
 import math
 import cv2
-from typing import NoReturn, Tuple, List
+from typing import NoReturn, Tuple, List, Union
 import matplotlib.pyplot as plt
 from dataclasses import dataclass, astuple
 from functools import cache
@@ -108,7 +108,7 @@ class Event:
 
 @dataclass(frozen=True)
 class TriggerInfo:
-    event: Event
+    event: Union[Event, None] 
     length: str
     filename: str
     start_frame: int
