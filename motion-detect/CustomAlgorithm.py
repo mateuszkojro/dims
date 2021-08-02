@@ -327,6 +327,32 @@ def on_destroy(event_list):
     return triggers if len(triggers) > 0 else None
 
 
+
+def combine_frames(frame_list):
+    return np.amax(frame_list, axis=0)
+
+def get_frames(path, start, stop):
+    capture = cv2.VideoCapture(path)
+    capture.set(cv2.CAP_PROP_POS_FRAMES, start)
+    frames = []
+    for i in range(stop - start + 1):
+        status, frame = capture.read()
+        frames.append(frame)
+    return frames
+        
+    
+def add_marker(frame, trigger):
+    rect = trigger.bounding_box
+    cv2.rectangle(frame, rect[0].tuple(), rect[1].tuple(), (0, 255, 0),2)
+    return frame
+
+
+def show_trigger(trigger):
+    frames = get_frames(trigger.filename, trigger.start_frame, trigger.end_frame)
+    result = combine_frames(frames)
+    result = add_marker(result, trigger)
+    plt.imshow(result)
+    plt.show()
 class Analyzer:
 
     def __init__(self):
