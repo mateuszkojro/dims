@@ -1,4 +1,3 @@
-
 import pyximport
 
 import time
@@ -7,8 +6,10 @@ import imutils
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from FileCrawler import StopCrawl, crawl
+from FileCrawler import StopCrawl, crawl, recursive_file_list
 import CustomAlgorithm as ca
+
+import multiprocessing as mp
 from typing import List
 
 import os
@@ -24,6 +25,7 @@ def show_coresponding_image(path):
 
 
 def analyze(path, debug=False):
+    print(f"Analyzing: {path}")
     triggers = []
     events = []
     frame_number = 0
@@ -93,14 +95,21 @@ if __name__ == '__main__':
         debug = int(os.environ["DEBUG"])
         print(f"Show debug infromation: {bool(debug)}")
 
-    path = sys.argv[1] if len(sys.argv) > 1 else "/run/media/mateusz/Seagate Expansion Drive/20190330Subset/N1"
+    threads = mp.cpu_count() - 1
+    if "THREADS" in os.environ:
+        threads = int(os.environ["THREADS"])
+        print(f"Using : {bool(threads)} threads")
 
-    all_triggers = crawl(
-        path,
-        analyze, debug=debug)
+    path = sys.argv[1] if len(
+        sys.argv) > 1 else "/run/media/mateusz/Seagate Expansion Drive/20190330Subset/N1"
 
-    all_triggers= np.array(all_triggers,
-                                               dtype=object).flatten()
+    file_list = recursive_file_list(path)
+
+    with mp.Pool(threads) as p:
+        all_triggers = p.map(analyze, file_list)
+
+    all_triggers = np.array(all_triggers,
+                            dtype=object).flatten()
 
     np.save("out.npy", all_triggers, allow_pickle=True)
 
@@ -108,12 +117,14 @@ if __name__ == '__main__':
     for trigger in all_triggers:
         start, end = trigger.bounding_box
         rows.append(
-            [trigger.filename, trigger.start_frame, trigger.end_frame, start.x, start.y, end.x, end.y, trigger.length,
-             trigger.magnitude])
+            [trigger.filename, trigger.start_frame, trigger.end_frame,
+             start.x, start.y, end.x, end.y, trigger.length, trigger.magnitude
+             ])
 
     df = pd.DataFrame(
         data=rows,
-        columns=["file", "start_frame", "end_frame", "box_up_left_x", "box_up_left_y", "box_down_right_x",
+        columns=["file", "start_frame", "end_frame", "box_up_left_x",
+                 "box_up_left_y", "box_down_right_x",
                  "box_down_right_y", "length", "count"])
 
     df.to_csv("out.csv")
