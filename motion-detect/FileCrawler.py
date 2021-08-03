@@ -1,6 +1,8 @@
 import os
 import random
 
+class StopCrawl(Exception):
+    pass
 
 def get_ext(path):
     return os.path.splitext(path)[-1]
@@ -24,8 +26,8 @@ def crawl(path, function, extension=".avi", debug=False):
                 print(f"Analyzing file {i}/{size} ({i / size * 100:2}%)")
                 result += function(abs_path, debug=debug)
                 i += 1
-        if debug and i ==6:
-            break
+        if debug and i ==10:
+            break 
     return result
 
 

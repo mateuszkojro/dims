@@ -79,7 +79,7 @@ class Event:
 
     def add_if_similar(self, position: EventInfo) -> bool:
         for item in self.positions:
-            if item.is_simillar_to(position, 15):
+            if item.is_simillar_to(position, 10):
                 self.positions.append(position)
                 self.last_changed = position.frame_no
                 return True

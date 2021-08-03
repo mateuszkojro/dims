@@ -6,12 +6,14 @@ import imutils
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from FileCrawler import crawl
+from FileCrawler import StopCrawl, crawl
 from CustomAlgorithm import *
 from typing import List
 
 import os
 import sys
+
+
 
 def show_coresponding_image(path):
     image = cv2.imread(path[:-4] + "M.bmp")
@@ -65,7 +67,8 @@ def analyze(path, debug=False):
                 if new_events is not None:
                     triggers = new_events
                 break
-
+            if key == ord('s'):
+                raise StopCrawl
         frame_number += 1
 
         now = time.monotonic()
@@ -87,10 +90,9 @@ if __name__ == '__main__':
         debug = int(os.environ["DEBUG"])
         print(f"Show debug infromation: {bool(debug)}")
 
-    path = sys.argv[1]
-    if path is None:
-        path = "/run/media/mateusz/Seagate Expansion Drive/20190330Subset/N1"
-
+    path = sys.argv[1] if len(sys.argv) > 1 else "/run/media/mateusz/Seagate Expansion Drive/20190330Subset/N1"
+    
+    
     all_triggers = crawl(
         path,
         analyze, debug=debug)
@@ -103,8 +105,8 @@ if __name__ == '__main__':
     rows = []
     for trigger in all_triggers:
         start, end = trigger.bounding_box
-    rows.append(
-        [trigger.filename, trigger.start_frame, trigger.end_frame, start.x, start.y, end.x, end.y,trigger.length ,trigger.magnitude])
+        rows.append(
+            [trigger.filename, trigger.start_frame, trigger.end_frame, start.x, start.y, end.x, end.y,trigger.length ,trigger.magnitude])
 
     df = pd.DataFrame(
         data=rows,
