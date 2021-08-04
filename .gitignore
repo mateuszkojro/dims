@@ -6,3 +6,4 @@ video_analyzer/build
 */.idea
 *.npy
 */.ipynb_checkpoints
+/data
