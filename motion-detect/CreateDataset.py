@@ -100,13 +100,29 @@ if __name__ == '__main__':
         threads = int(os.environ["THREADS"])
         print(f"Using : {bool(threads)} threads")
 
+    multithreading = True
+    if "MULTITHREADING" in os.environ:
+        multithreading = int(os.environ["MULTITHREADING"])
+        print(f"Multithreading {bool(multithreading)}")
+
     path = sys.argv[1] if len(
         sys.argv) > 1 else "/run/media/mateusz/Seagate Expansion Drive/20190330Subset/N1"
 
     file_list = recursive_file_list(path)
 
-    with mp.Pool(threads) as p:
-        all_triggers = p.map(analyze, file_list)
+    if debug:
+        import random
+        file_list = file_list[:5]
+        random.shuffle(file_list)
+
+    all_triggers = []
+
+    if multithreading:
+        with mp.Pool(threads) as p:
+            all_triggers = p.map(analyze, file_list)
+    else:
+        for file in file_list:
+            all_triggers += analyze(file)
 
     all_triggers = np.array(all_triggers,
                             dtype=object).flatten()

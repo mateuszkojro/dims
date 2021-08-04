@@ -1,1 +1,1 @@
-./compile.sh && DEBUG=1 python CreateDataset.py
+./compile.sh && time DEBUG=1 python CreateDataset.py
