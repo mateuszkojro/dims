@@ -1,5 +1,6 @@
 import pyximport
 
+import utils
 import time
 import cv2
 import imutils
@@ -16,12 +17,6 @@ import os
 import sys
 
 pyximport.install()
-
-
-def show_coresponding_image(path):
-    image = cv2.imread(path[:-4] + "M.bmp")
-    image = imutils.resize(image, width=600)
-    cv2.imshow("Ufo capture", image)
 
 
 def analyze(path, debug=False):
@@ -62,6 +57,9 @@ def analyze(path, debug=False):
 
         if debug:
             ca.annotate_frame(resized_frame, events)
+
+            utils.draw_grid(resized_frame)
+
             preview = imutils.resize(resized_frame, width=1500)
             cv2.imshow("Preview", preview)
             # Get the pressed key
@@ -112,30 +110,35 @@ if __name__ == '__main__':
 
     if debug:
         import random
+
         file_list = file_list[:5]
         random.shuffle(file_list)
 
     all_triggers = []
 
+    def apply_analyze(file):
+        return analyze(file, debug=debug)
+
     if multithreading:
         with mp.Pool(threads) as p:
-            all_triggers = p.map(analyze, file_list)
+            all_triggers = p.map(apply_analyze, file_list)
     else:
         for file in file_list:
             all_triggers += analyze(file)
 
-    all_triggers = np.array(all_triggers,
-                            dtype=object).flatten()
-
+    numpy_array = np.array(all_triggers, dtype=object)
     np.save("out.npy", all_triggers, allow_pickle=True)
 
     rows = []
-    for trigger in all_triggers:
-        start, end = trigger.bounding_box
-        rows.append(
-            [trigger.filename, trigger.start_frame, trigger.end_frame,
-             start.x, start.y, end.x, end.y, trigger.length, trigger.magnitude
-             ])
+
+    print(f"{all_triggers=}")
+    for clip in all_triggers:
+        for trigger in clip:
+            start, end = trigger.bounding_box
+            rows.append(
+                [trigger.filename, trigger.start_frame, trigger.end_frame,
+                 start.x, start.y, end.x, end.y, trigger.length, trigger.magnitude
+                 ])
 
     df = pd.DataFrame(
         data=rows,
