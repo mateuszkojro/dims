@@ -99,15 +99,12 @@ if __name__ == '__main__':
     file_list = recursive_file_list(path)
 
     if debug:
-        import random
-
         file_list = file_list[:5]
-
-    all_triggers = []
 
     def apply_analyze(file):
         return analyze(file, debug=debug)
 
+    all_triggers = []
     if multithreading:
         with mp.Pool(threads) as p:
             all_triggers = p.map(apply_analyze, file_list)
@@ -115,4 +112,4 @@ if __name__ == '__main__':
         for file in file_list:
             all_triggers += analyze(file)
 
-    uttils.save(all_triggers)
+    utils.save(all_triggers)

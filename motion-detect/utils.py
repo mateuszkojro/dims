@@ -1,5 +1,7 @@
 import cv2
 import os
+import numpy as np
+import pandas as pd
 
 
 def show_coresponding_image(path):
@@ -29,7 +31,7 @@ def get_setting(setting, default):
 
 def save(all_triggers):
     numpy_array = np.array(all_triggers, dtype=object)
-    np.save("out.npy", all_triggers, allow_pickle=True)
+    np.save("out.npy", numpy_array, allow_pickle=True)
 
     rows = []
 
@@ -38,13 +40,13 @@ def save(all_triggers):
             start, end = trigger.bounding_box
             rows.append(
                 [trigger.filename, trigger.start_frame, trigger.end_frame,
-                 start.x, start.y, end.x, end.y, trigger.length, trigger.magnitude
+                 start.x, start.y, end.x, end.y, trigger.length, trigger.magnitude, trigger.get_section()
                  ])
 
     df = pd.DataFrame(
         data=rows,
         columns=["file", "start_frame", "end_frame", "box_up_left_x",
                  "box_up_left_y", "box_down_right_x",
-                 "box_down_right_y", "length", "count"])
+                 "box_down_right_y", "length", "count", "section"])
 
     df.to_csv("out.csv")

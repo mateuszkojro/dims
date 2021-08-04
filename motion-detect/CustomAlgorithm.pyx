@@ -138,14 +138,16 @@ class TriggerInfo:
         self.bounding_box = bounding_box
 
     def get_section(self):
-        start, end = self.bounding_box()
-        x: cython.int = (end.x - start.x) / 2
-        y: cython.int = (end.y - start.y) / 2
+        start, end = self.bounding_box
+        x = start.x + (end.x - start.x) / 2
+        y = start.y + (end.y - start.y) / 2
+
+        print(x, y)
 
         x = x // 120
         y = y // 120
 
-        return Vec2(int(x), int(y))
+        return int(y * (1920 / 120)) + int(x)
 
     def get_frame_chunk(self):
         raise Exception("Not implemented")
@@ -167,12 +169,6 @@ class TriggerInfo:
     def combine_frames(frames):
         if len(frames) == 0:
             return None
-
-        # blend = 1 / len(frames)
-        # result = frames[0]
-        #
-        # for frame in fra  mes:
-        #     result = cv2.addWeighted(result, blend, frame, blend, 0)
 
         print(f"{np.ndim(frames)}")
         result = np.amax(frames, axis=1)
@@ -201,8 +197,6 @@ class TriggerInfo:
 
         frame = resize_frame(frame)
         left_top, right_bottom = self.bounding_box
-        # Cut out the description
-        # frame = frame[left_top.y:right_bottom.y, left_top.x:right_bottom.x]
 
         plt.imshow(frame)
         plt.show()
@@ -299,16 +293,14 @@ def update_events(event_list,
                   frame_number,
                   drop_inactive_time=3):
     triggers = []
-    for event in event_list.copy():
+    for event in event_list:
         # remove events not active for more than 5 frames
         if abs(event.last_changed - frame_number) > drop_inactive_time:
 
             # If event is not good enough we delete it
-            if not is_good_trigger(event):
-                event_list.remove(event)
-                continue
+            if is_good_trigger(event):
+                triggers.append(save_event(event))
 
-            triggers.append(save_event(event))
             event_list.remove(event)
 
     return triggers if len(triggers) > 0 else None
