@@ -30,12 +30,13 @@ class EventInfo:
     position: Vec2
     size: Vec2
 
-    def __init__(self, frame_no, position, size):
+    def __init__(self, frame_no: int, position : Vec2, size : int):
         self.size: cython.int = size
         self.position: cython.int = position
         self.frame_no: cython.int = frame_no
 
     @cache
+    # TODO: Is that correct tho?
     def center(self) -> Vec2:
         x: cython.int = self.position.x + (self.size.x / 2)
         y: cython.int = self.position.y + (self.size.y / 2)
@@ -136,6 +137,19 @@ class TriggerInfo:
         self.magnitude = magnitude
         self.bounding_box = bounding_box
 
+    def get_section(self):
+        start, end = self.bounding_box()
+        x: cython.int = (end.x - start.x) / 2
+        y: cython.int = (end.y - start.y) / 2
+
+        x = x // 120
+        y = y // 120
+
+        return Vec2(int(x), int(y))
+
+    def get_frame_chunk(self):
+        raise Exception("Not implemented")
+
     @staticmethod
     def from_csv_row(row):
         row = row[1:]
@@ -195,7 +209,7 @@ class TriggerInfo:
 
 
 # @cache
-def euc_distance(pos1: Vec2, pos2: Vec2) -> float:
+def euc_distance(pos1: Vec2, pos2: Vec2) -> cython.float:
     return math.sqrt((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2)
 
 # Adapted form:
@@ -289,12 +303,11 @@ def update_events(event_list,
         # remove events not active for more than 5 frames
         if abs(event.last_changed - frame_number) > drop_inactive_time:
 
-            # Here we should save info if event is good enough
+            # If event is not good enough we delete it
             if not is_good_trigger(event):
                 event_list.remove(event)
                 continue
 
-            # TODO: Check how close to a line is it
             triggers.append(save_event(event))
             event_list.remove(event)
 
@@ -305,10 +318,12 @@ def is_good_trigger(event, trigger_treshold=5):
     # if event.magnitude() < trigger_treshold:
     #     return False
 
+    # FIXME: That needs to be some dynamic value
     if event.lenght() < 20:
         return False
 
     # real event will be on more than one frame
+    # FIXME: That needs to be some dynamic value
     if event.last_changed - event.first_point < 3:
         return False
     #
