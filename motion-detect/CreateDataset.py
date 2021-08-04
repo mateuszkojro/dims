@@ -88,20 +88,10 @@ def analyze(path, debug=False):
 
 
 if __name__ == '__main__':
-    debug = False
-    if "DEBUG" in os.environ:
-        debug = int(os.environ["DEBUG"])
-        print(f"Show debug infromation: {bool(debug)}")
 
-    threads = mp.cpu_count() - 1
-    if "THREADS" in os.environ:
-        threads = int(os.environ["THREADS"])
-        print(f"Using : {bool(threads)} threads")
-
-    multithreading = True
-    if "MULTITHREADING" in os.environ:
-        multithreading = int(os.environ["MULTITHREADING"])
-        print(f"Multithreading {bool(multithreading)}")
+    debug = utils.get_setting("DEBUG", False)
+    threads = utils.get_setting("THREADS", mp.cpu_count() - 1)
+    multithreading = utils.get_setting("MULTITHREADING", True)
 
     path = sys.argv[1] if len(
         sys.argv) > 1 else "/run/media/mateusz/Seagate Expansion Drive/20190330Subset/N1"
@@ -112,7 +102,6 @@ if __name__ == '__main__':
         import random
 
         file_list = file_list[:5]
-        random.shuffle(file_list)
 
     all_triggers = []
 
@@ -126,24 +115,4 @@ if __name__ == '__main__':
         for file in file_list:
             all_triggers += analyze(file)
 
-    numpy_array = np.array(all_triggers, dtype=object)
-    np.save("out.npy", all_triggers, allow_pickle=True)
-
-    rows = []
-
-    print(f"{all_triggers=}")
-    for clip in all_triggers:
-        for trigger in clip:
-            start, end = trigger.bounding_box
-            rows.append(
-                [trigger.filename, trigger.start_frame, trigger.end_frame,
-                 start.x, start.y, end.x, end.y, trigger.length, trigger.magnitude
-                 ])
-
-    df = pd.DataFrame(
-        data=rows,
-        columns=["file", "start_frame", "end_frame", "box_up_left_x",
-                 "box_up_left_y", "box_down_right_x",
-                 "box_down_right_y", "length", "count"])
-
-    df.to_csv("out.csv")
+    uttils.save(all_triggers)
