@@ -42,15 +42,11 @@ class EventInfo:
 
     @cache
     # TODO: Is that correct tho?
-    @cython.boundscheck(False)  # Deactivate bounds checking
-    @cython.wraparound(False)  # Deactivate negative indexing.
     def center(self) -> Vec2:
         x: cython.int = self.position.x + int(self.size.x / 2)
         y: cython.int = self.position.y + int(self.size.y / 2)
         return Vec2(int(x), int(y))
 
-    @cython.boundscheck(False)  # Deactivate bounds checking
-    @cython.wraparound(False)  # Deactivate negative indexing.
     @cython.ccall
     def is_simillar_to(self, event, treshold: float):
         # check the time between events
@@ -113,8 +109,6 @@ class Event:
                 return True
         return False
 
-    @cython.boundscheck(False)  # Deactivate bounds checking
-    @cython.wraparound(False)  # Deactivate negative indexing.
     def magnitude(self):
         return len(self.positions)
 
@@ -131,8 +125,6 @@ class Event:
         if speed < min_speed:
             return True
 
-    @cython.boundscheck(False)  # Deactivate bounds checking
-    @cython.wraparound(False)  # Deactivate negative indexing.
     def lenght(self):
         start, stop = self.path()
         return euc_distance(start, stop)
@@ -167,6 +159,22 @@ class TriggerInfo:
 
         return int(y * (1920 / 120)) + int(x)
 
+    def cutout(self):
+        pass
+
+    def calculate_moment(self):
+        frames = []
+        capture = cv2.VideoCapture(self.filename)
+        capture.set(cv2.CAP_PROP_POS_FRAMES, self.start_frame)
+        for i in range(self.end_frame - self.start_frame):
+            status, frame = capture.read()
+            frames.append(frame)
+
+        combined = self.combine_frames(frames)
+
+        cutout =
+
+
     def get_frame_chunk(self):
         raise Exception("Not implemented")
 
@@ -188,7 +196,10 @@ class TriggerInfo:
         if len(frames) == 0:
             return None
 
-        print(f"{np.ndim(frames)}")
+        # print(f"{np.ndim(frames)}")
+        if len(fames) > 50:
+            print("ERR: to many frames")
+            frames = frames[:50]
         result = np.amax(frames, axis=1)
 
         return result
@@ -393,6 +404,9 @@ def on_destroy(event_list):
     return triggers if len(triggers) > 0 else None
 
 def combine_frames(frame_list):
+    if len(fames) > 50:
+        print("ERR: to many frames")
+        frames = frames[:50]
     return np.amax(frame_list, axis=0)
 
 def get_frames(path, start, stop):
