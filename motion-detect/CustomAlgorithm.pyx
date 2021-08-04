@@ -1,4 +1,7 @@
 import cython
+import pyximport;
+
+pyximport.install()
 import math
 
 import cv2
@@ -11,9 +14,10 @@ import numpy as np
 
 
 # @dataclass(unsafe_hash=True)
+@cython.cclass
 class Vec2:
-    x: int
-    y: int
+    x = cython.declare(cython.int, visibility='public')
+    y = cython.declare(cython.int, visibility='public')
 
     def __init__(self, x, y):
         self.x: cython.int = x
@@ -25,10 +29,11 @@ class Vec2:
 
 
 # @dataclass(frozen=True)
+@cython.cclass
 class EventInfo:
-    frame_no: cython.int
-    position: Vec2
-    size: Vec2
+    frame_no = cython.declare(cython.int, visibility='public')
+    position = cython.declare(Vec2, visibility='public')
+    size = cython.declare(Vec2, visibility='public')
 
     def __init__(self, frame_no: int, position : Vec2, size : int):
         self.size: cython.int = size
@@ -37,11 +42,16 @@ class EventInfo:
 
     @cache
     # TODO: Is that correct tho?
+    @cython.boundscheck(False)  # Deactivate bounds checking
+    @cython.wraparound(False)  # Deactivate negative indexing.
     def center(self) -> Vec2:
-        x: cython.int = self.position.x + (self.size.x / 2)
-        y: cython.int = self.position.y + (self.size.y / 2)
+        x: cython.int = self.position.x + int(self.size.x / 2)
+        y: cython.int = self.position.y + int(self.size.y / 2)
         return Vec2(int(x), int(y))
 
+    @cython.boundscheck(False)  # Deactivate bounds checking
+    @cython.wraparound(False)  # Deactivate negative indexing.
+    @cython.ccall
     def is_simillar_to(self, event, treshold: float):
         # check the time between events
         if abs(self.frame_no - event.frame_no) > 5:
@@ -53,6 +63,7 @@ class EventInfo:
 
 
 class Event:
+    """ Class containing a cluster of events """
     positions: List[EventInfo]
     last_changed: cython.int = 0
     filename: str
@@ -67,6 +78,8 @@ class Event:
     # TODO: This should be done using that
     #  https://docs.opencv.org/3.1.0/dd/d49/tutorial_py_contour_features.html
     @cache
+    @cython.boundscheck(False)  # Deactivate bounds checking
+    @cython.wraparound(False)  # Deactivate negative indexing.
     def bounding_rect(self) -> Tuple[Vec2]:
         min_x, min_y = self.positions[0].center().tuple()
         max_x, max_y = self.positions[0].center().tuple()
@@ -84,11 +97,14 @@ class Event:
         maximal = Vec2(math.floor(max_x), math.floor(max_y))
         return minimal, maximal
 
+    @cython.boundscheck(False)  # Deactivate bounds checking
     def path(self) -> Tuple[Vec2]:
         start = self.positions[0].position
         end = self.positions[-1].position
         return start, end
 
+    @cython.boundscheck(False)  # Deactivate bounds checking
+    @cython.wraparound(False)  # Deactivate negative indexing.
     def add_if_similar(self, position: EventInfo) -> bool:
         for item in self.positions:
             if item.is_simillar_to(position, 10):
@@ -97,6 +113,8 @@ class Event:
                 return True
         return False
 
+    @cython.boundscheck(False)  # Deactivate bounds checking
+    @cython.wraparound(False)  # Deactivate negative indexing.
     def magnitude(self):
         return len(self.positions)
 
@@ -113,6 +131,8 @@ class Event:
         if speed < min_speed:
             return True
 
+    @cython.boundscheck(False)  # Deactivate bounds checking
+    @cython.wraparound(False)  # Deactivate negative indexing.
     def lenght(self):
         start, stop = self.path()
         return euc_distance(start, stop)
@@ -121,7 +141,7 @@ class Event:
 # @dataclass(frozen=True)
 class TriggerInfo:
     event: Union[Event, None]
-    length: str
+    length: cython.int
     filename: str
     start_frame: cython.int
     end_frame: cython.int
@@ -141,8 +161,6 @@ class TriggerInfo:
         start, end = self.bounding_box
         x = start.x + (end.x - start.x) / 2
         y = start.y + (end.y - start.y) / 2
-
-        print(x, y)
 
         x = x // 120
         y = y // 120
@@ -203,12 +221,15 @@ class TriggerInfo:
 
 
 # @cache
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing.
+@cython.ccall
 def euc_distance(pos1: Vec2, pos2: Vec2) -> cython.float:
     return math.sqrt((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2)
 
 # Adapted form:
 # https://www.andrewnoske.com/wiki/Code_-_heatmaps_and_color_gradients
-def heatmap_color(val, max_val) -> Tuple[cython.int]:
+def heatmap_color(val, max_val) -> Tuple[int]:
     val = val / max_val
     NUM_COLORS = 2
     color = [[0, 0, 1], [0, 1, 0], [1, 0, 0]]
@@ -238,6 +259,9 @@ def save_event(event: Event) -> TriggerInfo:
                        bounding_box=event.bounding_rect(),
                        event=event)
 
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing.
+@cython.ccall
 def resize_frame(image, width=1920):
     # Scale image
     image = imutils.resize(image, width=width)
@@ -268,6 +292,9 @@ def get_contours(frame, reference_frame):
 
     return contours
 
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing.
+@cython.ccall
 def extract_events(contours,
                    event_list,
                    frame_number,
@@ -283,12 +310,16 @@ def extract_events(contours,
         size = Vec2(w, h)
         was_added = False
         new_event = EventInfo(frame_number, position, size)
+
         for event in event_list:
             if event.add_if_similar(new_event):
                 was_added = True
         if not was_added:
             event_list.append(Event(new_event, filename=filename))
 
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing.
+@cython.ccall
 def update_events(event_list,
                   frame_number,
                   drop_inactive_time=3):
@@ -305,6 +336,9 @@ def update_events(event_list,
 
     return triggers if len(triggers) > 0 else None
 
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing.
+@cython.ccall
 def is_good_trigger(event, trigger_treshold=5):
     #
     # if event.magnitude() < trigger_treshold:
@@ -347,6 +381,9 @@ def annotate_frame(frame,
             cv2.putText(frame, f"{event.lenght():1f}q", rect[0].tuple(),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.35, (100, 0, 0), 1)
 
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing.
+@cython.ccall
 def on_destroy(event_list):
     triggers = []
     for event in event_list.copy():

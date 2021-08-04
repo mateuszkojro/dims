@@ -1,5 +1,5 @@
 import pyximport
-
+import cython
 import utils
 import time
 import cv2
@@ -19,6 +19,8 @@ import sys
 pyximport.install()
 
 
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing.
 def analyze(path, debug=False):
     print(f"Analyzing: {path}")
     triggers = []
@@ -101,8 +103,12 @@ if __name__ == '__main__':
     if debug:
         file_list = file_list[:5]
 
+    file_list = file_list[:5]
+
+
     def apply_analyze(file):
         return analyze(file, debug=debug)
+
 
     all_triggers = []
     if multithreading:
