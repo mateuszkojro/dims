@@ -185,8 +185,8 @@ class TriggerInfo:
 
     def get_section(self):
         start, end = self.bounding_box
-        x = start.x + (end.x - start.x) / 2
-        y = start.y + (end.y - start.y) / 2
+        x = start.x + abs(end.x - start.x) / 2
+        y = start.y + abs(end.y - start.y) / 2
 
         x = x // 120
         y = y // 120
@@ -195,8 +195,8 @@ class TriggerInfo:
 
     def get_center(self):
         start, end = self.bounding_box
-        x = start.x + (end.x - start.x) / 2
-        y = start.y + (end.y - start.y) / 2
+        x = start.x + abs(end.x - start.x) / 2
+        y = start.y + abs(end.y - start.y) / 2
         return Vec2(x, y)
 
     def cutout(self):
@@ -460,9 +460,18 @@ def get_frames(path, start, stop):
     capture = cv2.VideoCapture(path)
     capture.set(cv2.CAP_PROP_POS_FRAMES, start)
     frames = []
-    for i in range(stop - start + 1):
+    if stop is None:
+        stop = capture.get(cv2.CAP_PROP_FRAME_COUNT-1)
+        status = True
+        while status:
+            status, frame = capture.read()
+            frames.append(frame)
+        return frames
+
+    for _ in range(stop - start + 1):
         status, frame = capture.read()
         frames.append(frame)
+
     return frames
 
 def add_marker(frame, trigger):
@@ -470,14 +479,28 @@ def add_marker(frame, trigger):
     cv2.rectangle(frame, rect[0].tuple(), rect[1].tuple(), (0, 255, 0), 2)
     return frame
 
-def show_trigger(trigger, size=(1920 // 120, 1080 // 120)):
-    plt.Figure(figsize=size)
+def prepare_trigger_frame(trigger, size=(1920 // 120, 1080 // 120)):
     frames = get_frames(trigger.filename, trigger.start_frame, trigger.end_frame)
     result = combine_frames(frames)
     result = add_marker(result, trigger)
+    return result
+
+def show_trigger(trigger, size=(1920 // 120, 1080 // 120)):
+    # plt.Figure(figsize=size)
+    result = prepare_trigger_frame(trigger)
     plt.imshow(result)
     plt.show()
+    # return plt
+    # return result
 
+def show_raw(filename, start_frame, end_frame, rect_start, rect_stop, size=(1920 // 120, 1080 // 120)):
+    # plt.Figure(figsize=size)
+    frames = get_frames(filename, start_frame, end_frame)
+    result = combine_frames(frames)
+    cv2.rectangle(result, rect_stop, rect_start, (255, 0, 0), 2)
+    # plt.imshow(result)
+    # plt.show()
+    return result
 
 class Analyzer:
 
