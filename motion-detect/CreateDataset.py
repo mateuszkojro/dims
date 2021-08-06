@@ -1,20 +1,15 @@
 import pyximport
 import cython
-import utils
 import time
 import cv2
 import imutils
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-from FileCrawler import StopCrawl, crawl, recursive_file_list
-import CustomAlgorithm as ca
-
-import multiprocessing as mp
-from typing import List
-
-import os
 import sys
+import multiprocessing as mp
+import random
+
+import utils
+from FileCrawler import StopCrawl, recursive_file_list
+import CustomAlgorithm as ca
 
 pyximport.install()
 
@@ -72,7 +67,10 @@ def analyze(path, debug=False):
                     triggers = new_events
                 break
             if key == ord('s'):
-                raise StopCrawl
+                with open("interesting", "a") as f:
+                    f.write(path + "\n")
+                print("INFO: Saved image")
+
         frame_number += 1
 
         now = time.monotonic()
@@ -95,20 +93,18 @@ if __name__ == '__main__':
     threads = utils.get_setting("THREADS", mp.cpu_count() - 1)
     multithreading = utils.get_setting("MULTITHREADING", True)
 
-    path = sys.argv[1] if len(
-        sys.argv) > 1 else "/run/media/mateusz/Seagate Expansion Drive/20190330Subset/N1"
+    path = sys.argv[1] \
+        if len(sys.argv) > 1 \
+        else "/run/media/mateusz/Seagate Expansion Drive/all"
 
     file_list = recursive_file_list(path)
 
     if debug:
-        file_list = file_list[:5]
-
-    file_list = file_list[:5]
-
+        random.shuffle(file_list)
+        file_list = file_list[:10]
 
     def apply_analyze(file):
         return analyze(file, debug=debug)
-
 
     all_triggers = []
     if multithreading:
