@@ -68,7 +68,7 @@ def analyze(path, debug=False):
                 break
             if key == ord('s'):
                 with open("interesting", "a") as f:
-                    f.write(path + "\n")
+                    f.write(path + frame_number + "\n")
                 print("INFO: Saved image")
 
         frame_number += 1

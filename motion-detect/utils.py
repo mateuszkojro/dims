@@ -1,6 +1,7 @@
 import cv2
 import os
 import numpy as np
+import imutils
 import pandas as pd
 
 
@@ -20,10 +21,10 @@ def draw_grid(frame):
         cv2.line(frame, (0, y * 120), (w, y * 120), (0, 0, 100), 1)
 
 
-def get_setting(setting, default):
+def get_setting(setting, default, var_type=int):
     result = default
     if setting in os.environ:
-        result = int(os.environ[setting])
+        result = var_type(os.environ[setting])
         print(f"{setting}:{result}")
 
     return result
