@@ -12,6 +12,12 @@ from functools import cache
 import imutils
 import numpy as np
 
+from collections import namedtuple
+from math import sqrt
+
+Line = namedtuple('Line', ['a', 'b', 'r', 'delta_a', 'delta_b'])
+
+all_events = []
 
 # @dataclass(unsafe_hash=True)
 @cython.cclass
@@ -103,7 +109,7 @@ class Event:
     @cython.wraparound(False)  # Deactivate negative indexing.
     def add_if_similar(self, position: EventInfo) -> bool:
         for item in self.positions:
-            if item.is_simillar_to(position, 10):
+            if item.is_simillar_to(position, 7):
                 self.positions.append(position)
                 self.last_changed = position.frame_no
                 return True
@@ -128,6 +134,34 @@ class Event:
     def lenght(self):
         start, stop = self.path()
         return euc_distance(start, stop)
+
+    def fit_line(self) -> Line:
+        points = [p.position for p in self.positions]
+        s = len(points)
+        s_x = sum(p.x for p in points)
+        s_y = sum(p.y for p in points)
+        s_xx = sum(p.x**2 for p in points)
+        s_yy = sum(p.y**2 for p in points)
+        s_xy = sum(p.x*p.y for p in points)
+        delta = s * s_xx - (s_x ** 2)
+
+        if s == 0 or delta == 0:
+            print(f"ERR Divide by 0 while fitting the line: s={s}, delta={delta}")
+            return Line(0,0,0,0,0)
+
+
+        a = ( s * s_xy - s_x * s_y ) / delta
+        b = (s_xx * s_y - s_x * s_xy) / delta
+
+        chi_sqr = s_yy - a*s_xy - b*s_y
+
+        delta_a = chi_sqr / (s - 2) * s / delta
+        delta_b = delta_a * s_xx / s
+
+        r = (s * s_xy - s_x * s_y) / sqrt( (s * s_xx - s_x ** 2) * (s * s_yy - s_y ** 2) )
+        r = abs(r)
+
+        return Line(a, b, r, delta_a, delta_b)
 
 
 # @dataclass(frozen=True)
@@ -159,6 +193,12 @@ class TriggerInfo:
 
         return int(y * (1920 / 120)) + int(x)
 
+    def get_center(self):
+        start, end = self.bounding_box
+        x = start.x + (end.x - start.x) / 2
+        y = start.y + (end.y - start.y) / 2
+        return Vec2(x, y)
+
     def cutout(self):
         pass
 
@@ -172,7 +212,7 @@ class TriggerInfo:
 
         combined = self.combine_frames(frames)
 
-        cutout =
+        raise Exception("Onl partialy implemented")
 
 
     def get_frame_chunk(self):
@@ -197,7 +237,7 @@ class TriggerInfo:
             return None
 
         # print(f"{np.ndim(frames)}")
-        if len(fames) > 50:
+        if len(frames) > 50:
             print("ERR: to many frames")
             frames = frames[:50]
         result = np.amax(frames, axis=1)
@@ -291,7 +331,7 @@ def preprocess_frame(frame, sigma=(3, 3)):
 
 def get_contours(frame, reference_frame):
     delta = cv2.absdiff(frame, reference_frame)
-    thresh = cv2.threshold(delta, 55, 255, cv2.THRESH_BINARY)[1]
+    thresh = cv2.threshold(delta, 50, 255, cv2.THRESH_BINARY)[1]
 
     # on threshold image
     thresh = cv2.dilate(thresh, None, iterations=2)
@@ -363,6 +403,13 @@ def is_good_trigger(event, trigger_treshold=5):
     # FIXME: That needs to be some dynamic value
     if event.last_changed - event.first_point < 3:
         return False
+
+    # FIXME: That needs to be some dynamic value
+    a, b, r, _, _ = event.fit_line()
+    if r < 0.8:
+        print(f"INFO: Bad line fit {r}")
+        return False
+
     #
     # if event.too_slow():
     #     return False
@@ -404,9 +451,9 @@ def on_destroy(event_list):
     return triggers if len(triggers) > 0 else None
 
 def combine_frames(frame_list):
-    if len(fames) > 50:
+    if len(frame_list) > 50:
         print("ERR: to many frames")
-        frames = frames[:50]
+        frame_list = frame_list[:50]
     return np.amax(frame_list, axis=0)
 
 def get_frames(path, start, stop):
@@ -423,7 +470,8 @@ def add_marker(frame, trigger):
     cv2.rectangle(frame, rect[0].tuple(), rect[1].tuple(), (0, 255, 0), 2)
     return frame
 
-def show_trigger(trigger):
+def show_trigger(trigger, size=(1920 // 120, 1080 // 120)):
+    plt.Figure(figsize=size)
     frames = get_frames(trigger.filename, trigger.start_frame, trigger.end_frame)
     result = combine_frames(frames)
     result = add_marker(result, trigger)
