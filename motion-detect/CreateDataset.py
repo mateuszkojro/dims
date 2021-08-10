@@ -76,7 +76,7 @@ def analyze(path, debug=False):
         now = time.monotonic()
         # if file takes more than 5 minutes stop
         if now - start_time > 5 * 60:
-            print(f"ERR: Analyzing file took too long - stopping ({path})")
+            print(f"ERR:\tAnalyzing file took too long - stopping ({path})")
             new_triggers = ca.on_destroy(events)
             if new_triggers is not None:
                 triggers += new_triggers
@@ -104,8 +104,8 @@ if __name__ == '__main__':
     file_list = recursive_file_list(path)
 
     if debug:
-        random.shuffle(file_list)
-        file_list = file_list[:10]
+        # random.shuffle(file_list)
+        file_list = file_list[700:710]
 
     def apply_analyze(file):
         return analyze(file, debug=debug)
