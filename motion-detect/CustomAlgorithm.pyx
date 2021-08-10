@@ -1,4 +1,9 @@
+import cython
+import pyximport
+
+pyximport.install()
 import math
+
 import cv2
 from typing import NoReturn, Tuple, List, Union
 import matplotlib.pyplot as plt
@@ -7,29 +12,50 @@ from functools import cache
 import imutils
 import numpy as np
 
+from collections import namedtuple
+from math import sqrt
 
-@dataclass(unsafe_hash=True)
+Line = namedtuple('Line', ['a', 'b', 'r', 'delta_a', 'delta_b'])
+
+all_events = []
+
+
+# @dataclass(unsafe_hash=True)
+@cython.cclass
 class Vec2:
-    x: int
-    y: int
+    x = cython.declare(cython.int, visibility='public')
+    y = cython.declare(cython.int, visibility='public')
+
+    def __init__(self, x, y):
+        self.x: cython.int = x
+        self.y: cython.int = y
 
     @cache
-    def tuple(self) -> Tuple[int]:
-        return astuple(self)
+    def tuple(self) -> Tuple[int, int]:
+        # return astuple(self)
+        return self.x, self.y
 
 
-@dataclass(frozen=True)
+# @dataclass(frozen=True)
+@cython.cclass
 class EventInfo:
-    frame_no: int
-    position: Vec2
-    size: Vec2
+    frame_no = cython.declare(cython.int, visibility='public')
+    position = cython.declare(Vec2, visibility='public')
+    size = cython.declare(Vec2, visibility='public')
+
+    def __init__(self, frame_no: int, position: Vec2, size: int):
+        self.size: cython.int = size
+        self.position: cython.int = position
+        self.frame_no: cython.int = frame_no
 
     @cache
+    # TODO: Test that Is that correct tho?
     def center(self) -> Vec2:
-        x = self.position.x + (self.size.x / 2)
-        y = self.position.y + (self.size.y / 2)
+        x: cython.int = self.position.x + int(self.size.x / 2)
+        y: cython.int = self.position.y + int(self.size.y / 2)
         return Vec2(int(x), int(y))
 
+    @cython.ccall
     def is_simillar_to(self, event, treshold: float):
         # check the time between events
         if abs(self.frame_no - event.frame_no) > 5:
@@ -41,8 +67,9 @@ class EventInfo:
 
 
 class Event:
+    """ Class containing a cluster of events """
     positions: List[EventInfo]
-    last_changed: int = 0
+    last_changed: cython.int = 0
     filename: str
 
     def __init__(self, position: EventInfo, filename):
@@ -55,6 +82,8 @@ class Event:
     # TODO: This should be done using that
     #  https://docs.opencv.org/3.1.0/dd/d49/tutorial_py_contour_features.html
     @cache
+    @cython.boundscheck(False)  # Deactivate bounds checking
+    @cython.wraparound(False)  # Deactivate negative indexing.
     def bounding_rect(self) -> Tuple[Vec2]:
         min_x, min_y = self.positions[0].center().tuple()
         max_x, max_y = self.positions[0].center().tuple()
@@ -72,23 +101,26 @@ class Event:
         maximal = Vec2(math.floor(max_x), math.floor(max_y))
         return minimal, maximal
 
+    @cython.boundscheck(False)  # Deactivate bounds checking
     def path(self) -> Tuple[Vec2]:
         start = self.positions[0].position
         end = self.positions[-1].position
         return start, end
 
+    @cython.boundscheck(False)  # Deactivate bounds checking
+    @cython.wraparound(False)  # Deactivate negative indexing.
     def add_if_similar(self, position: EventInfo) -> bool:
         for item in self.positions:
-            if item.is_simillar_to(position, 10):
+            if item.is_simillar_to(position, 5):
                 self.positions.append(position)
                 self.last_changed = position.frame_no
                 return True
         return False
 
-    def magnitude(self):
+    def event_count(self):
         return len(self.positions)
 
-    def too_slow(self, min_speed=10):
+    def too_slow(self, min_speed: cython.int = 10):
         if len(self.positions) < 5:
             return False
 
@@ -101,46 +133,128 @@ class Event:
         if speed < min_speed:
             return True
 
+    @cython.boundscheck(False)  # Deactivate bounds checking
+    @cython.wraparound(False)  # Deactivate negative indexing.
     def lenght(self):
         start, stop = self.path()
         return euc_distance(start, stop)
 
+    @cython.boundscheck(False)  # Deactivate bounds checking
+    @cython.wraparound(False)  # Deactivate negative indexing.
+    def fit_line(self) -> Line:
+        points = [p.position for p in self.positions]
+        s = len(points)
+        s_x = sum(p.x for p in points)
+        s_y = sum(p.y for p in points)
+        s_xx = sum(p.x**2 for p in points)
+        s_yy = sum(p.y**2 for p in points)
+        s_xy = sum(p.x * p.y for p in points)
+        delta = s * s_xx - (s_x**2)
 
-@dataclass(frozen=True)
+        if s == 0 or delta == 0 or s - 2 == 0:
+            print(
+                f"ERR\tDivide by 0 while fitting the line: s={s}, delta={delta}"
+            )
+            return Line(0, 0, 0, 0, 0)
+
+        a = (s * s_xy - s_x * s_y) / delta
+        b = (s_xx * s_y - s_x * s_xy) / delta
+
+        chi_sqr = s_yy - a * s_xy - b * s_y
+
+        delta_a = chi_sqr / (s - 2) * s / delta
+        delta_b = delta_a * s_xx / s
+
+        r = (s * s_xy - s_x * s_y) / sqrt(
+            (s * s_xx - s_x**2) * (s * s_yy - s_y**2))
+        r = abs(r)
+
+        return Line(a, b, r, delta_a, delta_b)
+
+
+# @dataclass(frozen=True)
 class TriggerInfo:
-    event: Union[Event, None] 
-    length: str
+    event: Union[Event, None]
+    length: cython.int
     filename: str
-    start_frame: int
-    end_frame: int
-    magnitude: int
+    start_frame: cython.int
+    end_frame: cython.int
+    event_count: cython.int
     bounding_box: Tuple[Vec2]
+    line_fit: float
+
+    def __init__(self, event, length, filename, start_frame, end_frame,
+                 event_count, bounding_box, line_fit):
+        self.event = event
+        self.length = length
+        self.filename = filename
+        self.start_frame = start_frame
+        self.end_frame = end_frame
+        self.event_count = event_count
+        self.bounding_box = bounding_box
+        self.line_fit = line_fit
+
+    # TODO: Test that to be sure
+    def get_section(self):
+        start, end = self.bounding_box
+        x = start.x + abs(end.x - start.x) / 2
+        y = start.y + abs(end.y - start.y) / 2
+
+        x = x // 120
+        y = y // 120
+
+        return int(y * (1920 / 120)) + int(x)
+
+    # TODO: Test that to be sure
+    def get_center(self):
+        start, end = self.bounding_box
+        x = start.x + abs(end.x - start.x) / 2
+        y = start.y + abs(end.y - start.y) / 2
+        return Vec2(x, y)
+
+    def get_uid(self):
+        filename = self.filename.replace('/', '@')
+        return f"{filename}_{self.get_section()}_{self.start_frame}_{self.end_frame}"
+
+    def cutout(self):
+        pass
+
+    def calculate_moment(self):
+        frames = []
+        capture = cv2.VideoCapture(self.filename)
+        capture.set(cv2.CAP_PROP_POS_FRAMES, self.start_frame)
+        for i in range(self.end_frame - self.start_frame):
+            status, frame = capture.read()
+            frames.append(frame)
+
+        combined = self.combine_frames(frames)
+
+        raise Exception("Onl partialy implemented")
+
+    def get_frame_chunk(self):
+        raise Exception("Not implemented")
 
     @staticmethod
     def from_csv_row(row):
         row = row[1:]
-        return TriggerInfo(
-            filename=row[0],
-            start_frame=int(row[1]),
-            end_frame=int(row[2]),
-            bounding_box=(Vec2(row[3],row[4]), Vec2(row[5],row[6])),
-            length=row[7],
-            magnitude=row[8],
-            event=None
-        )
+        return TriggerInfo(filename=row[0],
+                           start_frame=int(row[1]),
+                           end_frame=int(row[2]),
+                           bounding_box=(Vec2(row[3],
+                                              row[4]), Vec2(row[5], row[6])),
+                           length=row[7],
+                           event_count=row[8],
+                           event=None)
 
     @staticmethod
     def combine_frames(frames):
         if len(frames) == 0:
             return None
 
-        # blend = 1 / len(frames)
-        # result = frames[0]
-        #
-        # for frame in fra  mes:
-        #     result = cv2.addWeighted(result, blend, frame, blend, 0)
-
-        print(f"{np.ndim(frames)=}")
+        # print(f"{np.ndim(frames)}")
+        if len(frames) > 50:
+            print("ERR: to many frames")
+            frames = frames[:50]
         result = np.amax(frames, axis=1)
 
         return result
@@ -167,16 +281,17 @@ class TriggerInfo:
 
         frame = resize_frame(frame)
         left_top, right_bottom = self.bounding_box
-        # Cut out the description
-        # frame = frame[left_top.y:right_bottom.y, left_top.x:right_bottom.x]
 
         plt.imshow(frame)
         plt.show()
 
 
 # @cache
-def euc_distance(pos1: Vec2, pos2: Vec2) -> float:
-    return math.sqrt((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2)
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing.
+@cython.ccall
+def euc_distance(pos1: Vec2, pos2: Vec2) -> cython.float:
+    return math.sqrt((pos1.x - pos2.x)**2 + (pos1.y - pos2.y)**2)
 
 
 # Adapted form:
@@ -208,11 +323,15 @@ def save_event(event: Event) -> TriggerInfo:
                        length=event.lenght(),
                        start_frame=event.first_point,
                        end_frame=event.last_changed,
-                       magnitude=event.magnitude(),
+                       event_count=event.event_count(),
                        bounding_box=event.bounding_rect(),
+                       line_fit=event.fit_line()[2],
                        event=event)
 
 
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing.
+@cython.ccall
 def resize_frame(image, width=1920):
     # Scale image
     image = imutils.resize(image, width=width)
@@ -225,6 +344,9 @@ def resize_frame(image, width=1920):
     return image
 
 
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing.
+@cython.ccall
 def preprocess_frame(frame, sigma=(3, 3)):
     grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     grayscale = cv2.GaussianBlur(grayscale, sigma, 0)
@@ -233,7 +355,7 @@ def preprocess_frame(frame, sigma=(3, 3)):
 
 def get_contours(frame, reference_frame):
     delta = cv2.absdiff(frame, reference_frame)
-    thresh = cv2.threshold(delta, 55, 255, cv2.THRESH_BINARY)[1]
+    thresh = cv2.threshold(delta, 50, 255, cv2.THRESH_BINARY)[1]
 
     # on threshold image
     thresh = cv2.dilate(thresh, None, iterations=2)
@@ -246,12 +368,14 @@ def get_contours(frame, reference_frame):
     return contours
 
 
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing.
+@cython.ccall
 def extract_events(contours,
                    event_list,
                    frame_number,
                    filename,
                    trigger_treshold_area=5):
-
     for contour in contours:
         # if the contour is too small, ignore it
         if cv2.contourArea(contour) < trigger_treshold_area:
@@ -262,6 +386,7 @@ def extract_events(contours,
         size = Vec2(w, h)
         was_added = False
         new_event = EventInfo(frame_number, position, size)
+
         for event in event_list:
             if event.add_if_similar(new_event):
                 was_added = True
@@ -269,37 +394,47 @@ def extract_events(contours,
             event_list.append(Event(new_event, filename=filename))
 
 
-def update_events(event_list,
-                  frame_number,
-                  drop_inactive_time=3):
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing.
+@cython.ccall
+def update_events(event_list, frame_number, drop_inactive_time=3):
     triggers = []
-    for event in event_list.copy():
+    for event in event_list:
         # remove events not active for more than 5 frames
         if abs(event.last_changed - frame_number) > drop_inactive_time:
 
-            # Here we should save info if event is good enough
-            if not is_good_trigger(event):
-                event_list.remove(event)
-                continue
+            # If event is not good enough we delete it
+            if is_good_trigger(event):
+                triggers.append(save_event(event))
 
-            # TODO: Check how close to a line is it
-            triggers.append(save_event(event))
             event_list.remove(event)
 
     return triggers if len(triggers) > 0 else None
 
 
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing.
+@cython.ccall
 def is_good_trigger(event, trigger_treshold=5):
     #
-    # if event.magnitude() < trigger_treshold:
+    # if event.event_count() < trigger_treshold:
     #     return False
 
+    # FIXME: That needs to be some dynamic value
     if event.lenght() < 20:
         return False
 
     # real event will be on more than one frame
+    # FIXME: That needs to be some dynamic value
     if event.last_changed - event.first_point < 3:
         return False
+
+    # FIXME: That needs to be some dynamic value
+    a, b, r, _, _ = event.fit_line()
+    if r < 0.8:
+        print(f"INFO:\tBad line fit {r}")
+        return False
+
     #
     # if event.too_slow():
     #     return False
@@ -331,6 +466,9 @@ def annotate_frame(frame,
                         cv2.FONT_HERSHEY_SIMPLEX, 0.35, (100, 0, 0), 1)
 
 
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing.
+@cython.ccall
 def on_destroy(event_list):
     triggers = []
     for event in event_list.copy():
@@ -340,33 +478,72 @@ def on_destroy(event_list):
     return triggers if len(triggers) > 0 else None
 
 
-
 def combine_frames(frame_list):
+    if len(frame_list) > 50:
+        print("ERR: to many frames")
+        frame_list = frame_list[:50]
     return np.amax(frame_list, axis=0)
+
 
 def get_frames(path, start, stop):
     capture = cv2.VideoCapture(path)
     capture.set(cv2.CAP_PROP_POS_FRAMES, start)
     frames = []
-    for i in range(stop - start + 1):
+    if stop is None:
+        stop = capture.get(cv2.CAP_PROP_FRAME_COUNT - 1)
+        status = True
+        while status:
+            status, frame = capture.read()
+            frames.append(frame)
+        return frames
+
+    for _ in range(stop - start + 1):
         status, frame = capture.read()
         frames.append(frame)
+
     return frames
-        
-    
+
+
 def add_marker(frame, trigger):
     rect = trigger.bounding_box
-    cv2.rectangle(frame, rect[0].tuple(), rect[1].tuple(), (0, 255, 0),2)
+    cv2.rectangle(frame, rect[0].tuple(), rect[1].tuple(), (0, 255, 0), 2)
     return frame
 
 
-def show_trigger(trigger):
-    frames = get_frames(trigger.filename, trigger.start_frame, trigger.end_frame)
+# TODO: Test that to be sure
+def prepare_trigger_frame(trigger, size=(1920 // 120, 1080 // 120)):
+    frames = get_frames(trigger.filename, trigger.start_frame,
+                        trigger.end_frame)
     result = combine_frames(frames)
     result = add_marker(result, trigger)
+    return result
+
+
+def show_trigger(trigger, size=(1920 // 120, 1080 // 120)):
+    # plt.Figure(figsize=size)
+    result = prepare_trigger_frame(trigger)
     plt.imshow(result)
     plt.show()
-class Analyzer:
+    # return plt
+    # return result
 
+
+# TODO: Test that to be sure
+def show_raw(filename,
+             start_frame,
+             end_frame,
+             rect_start,
+             rect_stop,
+             size=(1920 // 120, 1080 // 120)):
+    # plt.Figure(figsize=size)
+    frames = get_frames(filename, start_frame, end_frame)
+    result = combine_frames(frames)
+    cv2.rectangle(result, rect_stop, rect_start, (255, 0, 0), 2)
+    # plt.imshow(result)
+    # plt.show()
+    return result
+
+
+class Analyzer:
     def __init__(self):
         pass
