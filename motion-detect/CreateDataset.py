@@ -96,6 +96,10 @@ if __name__ == '__main__':
     path = sys.argv[1] \
         if len(sys.argv) > 1 \
         else "/run/media/mateusz/Seagate Expansion Drive/all"
+    
+    out_path = sys.argv[2] \
+        if len(sys.argv) > 2 \
+        else "out"
 
     file_list = recursive_file_list(path)
 
@@ -107,6 +111,9 @@ if __name__ == '__main__':
         return analyze(file, debug=debug)
 
     all_triggers = []
+
+    print(f"INFO:\tFound {len(file_list)} avi files")
+
     if multithreading:
         with mp.Pool(threads) as p:
             all_triggers = p.map(apply_analyze, file_list)
@@ -114,4 +121,4 @@ if __name__ == '__main__':
         for file in file_list:
             all_triggers += analyze(file)
 
-    utils.save(all_triggers)
+    utils.save(all_triggers, out_path)
