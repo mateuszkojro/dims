@@ -30,24 +30,27 @@ def get_setting(setting, default, var_type=int):
     return result
 
 
-def save(all_triggers):
+def save(all_triggers, out_name="out"):
     numpy_array = np.array(all_triggers, dtype=object)
-    np.save("out.npy", numpy_array, allow_pickle=True)
+    np.save(out_name + ".npy", numpy_array, allow_pickle=True)
 
     rows = []
 
     for clip in all_triggers:
         for trigger in clip:
             start, end = trigger.bounding_box
-            rows.append(
-                [trigger.filename, trigger.start_frame, trigger.end_frame,
-                 start.x, start.y, end.x, end.y, trigger.length, trigger.magnitude, trigger.get_section()
-                 ])
+            rows.append([
+                trigger.filename, trigger.start_frame, trigger.end_frame,
+                start.x, start.y, end.x, end.y, trigger.length,
+                trigger.event_count,
+                trigger.get_section(),trigger.line_fit
+            ])
 
-    df = pd.DataFrame(
-        data=rows,
-        columns=["file", "start_frame", "end_frame", "box_up_left_x",
-                 "box_up_left_y", "box_down_right_x",
-                 "box_down_right_y", "length", "count", "section"])
+    df = pd.DataFrame(data=rows,
+                      columns=[
+                          "file", "start_frame", "end_frame", "box_up_left_x",
+                          "box_up_left_y", "box_down_right_x",
+                          "box_down_right_y", "length", "count", "section", "line_fir"
+                      ])
 
-    df.to_csv("out.csv")
+    df.to_csv(out_name + ".csv")
