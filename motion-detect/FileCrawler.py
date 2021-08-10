@@ -35,7 +35,6 @@ def crawl(path, function, extension=".avi", debug=False):
 
 def recursive_file_list(path, extension=".avi", debug=False):
     initial_path = path
-    print(initial_path)
     nodes = os.listdir(path)
 
     collected_files = []
@@ -44,7 +43,7 @@ def recursive_file_list(path, extension=".avi", debug=False):
         abs_path = initial_path + "/" + node
 
         if os.path.isdir(abs_path):
-            print(f"INFO: Found subdirectory: {abs_path}")
+            print(f"INFO:\tFound subdirectory: {abs_path}")
             collected_files += recursive_file_list(abs_path)
             continue
 
