@@ -17,73 +17,78 @@ pyximport.install()
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)  # Deactivate negative indexing.
 def analyze(path, debug=False):
-    print(f"Analyzing: {path}")
-    triggers = []
-    events = []
-    frame_number = 0
-    video_capture = cv2.VideoCapture(path)
-    reference_frame = None
-    start_time = time.monotonic()
-    while True:
+    try:
+        print(f"Analyzing: {path}")
+        triggers = []
+        events = []
+        frame_number = 0
+        video_capture = cv2.VideoCapture(path)
+        reference_frame = None
+        start_time = time.monotonic()
+        while True:
 
-        status, frame = video_capture.read()
+            status, frame = video_capture.read()
 
-        if not status:
-            new_triggers = ca.on_destroy(events)
-            if new_triggers is not None:
-                triggers += new_triggers
-            break
-
-        resized_frame = ca.resize_frame(frame)
-
-        preprocessed = ca.preprocess_frame(resized_frame)
-
-        # if the first frame is None, initialize it
-        if reference_frame is None:
-            reference_frame = preprocessed
-            continue
-
-        contours = ca.get_contours(preprocessed, reference_frame)
-
-        ca.extract_events(contours, events, frame_number, filename=path)
-
-        new_triggers = ca.update_events(events, frame_number)
-
-        if new_triggers is not None:
-            triggers += new_triggers
-
-        if debug:
-            ca.annotate_frame(resized_frame, events)
-
-            utils.draw_grid(resized_frame)
-
-            preview = imutils.resize(resized_frame, width=1500)
-            cv2.imshow("Preview", preview)
-            # Get the pressed key
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord('q'):
-                new_events = ca.on_destroy(events)
-                if new_events is not None:
-                    triggers = new_events
+            if not status:
+                new_triggers = ca.on_destroy(events)
+                if new_triggers is not None:
+                    triggers += new_triggers
                 break
-            if key == ord('s'):
-                with open("interesting", "a") as f:
-                    f.write(path + frame_number + "\n")
-                print("INFO: Saved image")
 
-        frame_number += 1
+            resized_frame = ca.resize_frame(frame)
 
-        now = time.monotonic()
-        # if file takes more than 5 minutes stop
-        if now - start_time > 5 * 60:
-            print(f"ERR:\tAnalyzing file took too long - stopping ({path})")
-            new_triggers = ca.on_destroy(events)
+            preprocessed = ca.preprocess_frame(resized_frame)
+
+            # if the first frame is None, initialize it
+            if reference_frame is None:
+                reference_frame = preprocessed
+                continue
+
+            contours = ca.get_contours(preprocessed, reference_frame)
+
+            ca.extract_events(contours, events, frame_number, filename=path)
+
+            new_triggers = ca.update_events(events, frame_number)
+
             if new_triggers is not None:
                 triggers += new_triggers
-            break
 
-    video_capture.release()
-    cv2.destroyAllWindows()
+            if debug:
+                ca.annotate_frame(resized_frame, events)
+
+                utils.draw_grid(resized_frame)
+
+                preview = imutils.resize(resized_frame, width=1500)
+                cv2.imshow("Preview", preview)
+                # Get the pressed key
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord('q'):
+                    new_events = ca.on_destroy(events)
+                    if new_events is not None:
+                        triggers = new_events
+                    break
+                if key == ord('s'):
+                    with open("interesting", "a") as f:
+                        f.write(path + frame_number + "\n")
+                    print("INFO: Saved image")
+
+            frame_number += 1
+
+            now = time.monotonic()
+            # if file takes more than 5 minutes stop
+            if now - start_time > 5 * 60:
+                print(f"ERR:\tAnalyzing file took too long - stopping ({path})")
+                new_triggers = ca.on_destroy(events)
+                if new_triggers is not None:
+                    triggers += new_triggers
+                break
+        video_capture.release()
+        cv2.destroyAllWindows()
+    except Exception as error:
+        print(f"CRITICAL\tanalysys failed for file: {path} with: {error}")
+        video_capture.release()
+        cv2.destroyAllWindows()
+        return []
     return triggers
 
 
