@@ -118,7 +118,7 @@ def analyze(path):
             # remove events not active for more than 5 frames
             if abs(event.last_changed - frame_no) > DROP_INACTIVE_TIME:
                 # Here we should save info if event is good enough
-                if event.magnitude() < EVENT_TRESHOLD:
+                if event.event_count() < EVENT_TRESHOLD:
                     continue
                 start, end = event.path()
                 if euc_distance(start, end) < 20:
@@ -129,7 +129,7 @@ def analyze(path):
             if SHOW:
                 if DRAW_PATH:
                     rect = event.path()
-                    color = heatmap_color(event.magnitude(), EVENT_TRESHOLD) if HEATMAP else (0, 255, 0)
+                    color = heatmap_color(event.event_count(), EVENT_TRESHOLD) if HEATMAP else (0, 255, 0)
                     cv2.line(frame, rect[0].tuple(), rect[1].tuple(), color, 3)
 
                 if DRAW_BOX:
