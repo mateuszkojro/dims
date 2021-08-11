@@ -96,7 +96,7 @@ if __name__ == '__main__':
     path = sys.argv[1] \
         if len(sys.argv) > 1 \
         else "/run/media/mateusz/Seagate Expansion Drive/all"
-    
+
     out_path = sys.argv[2] \
         if len(sys.argv) > 2 \
         else "out"
@@ -122,3 +122,10 @@ if __name__ == '__main__':
             all_triggers += analyze(file)
 
     utils.save(all_triggers, out_path)
+
+    print()
+    print("-" * 30)
+    print("\t" + "Complete!")
+    print("-" * 30)
+    print()
+    print("\a")
