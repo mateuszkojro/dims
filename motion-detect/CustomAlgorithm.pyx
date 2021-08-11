@@ -1,28 +1,23 @@
-from os import EX_CANTCREAT
 import cython
-from numpy.core.fromnumeric import size
-from numpy.lib.function_base import cov
 import pyximport
 
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 import matplotlib.animation as animation
 
-pyximport.install()
 import math
 
 import cv2
-from typing import NoReturn, Tuple, List, Union
+from typing import Tuple, List, Union
 import matplotlib.pyplot as plt
-from dataclasses import dataclass, astuple
 from functools import cache
 import imutils
 import numpy as np
 
 from collections import namedtuple
-from math import sqrt
 import scipy.optimize as optim
 import scipy.stats as stats
+
+pyximport.install()
 
 Line = namedtuple('Line', ['a', 'b', 'r'])
 
@@ -279,7 +274,7 @@ class TriggerInfo:
         x = x // 120
         y = y // 120
 
-        return int(y * (1920 / 120)) + int(x)
+        return int(y * (1920 // 120)) + int(x)
 
     # TODO: Test that to be sure
     def get_center(self):
@@ -292,30 +287,44 @@ class TriggerInfo:
         filename = self.filename.replace('/', '@')
         return f"{filename}_{self.get_section()}_{self.start_frame}_{self.end_frame}"
 
-    def cutout(self):
+    def section_cutout(self):
         frames = get_frames(self.filename, self.start_frame, self.end_frame)
-        start, stop = self.bounding_box
-        frames = [frame[start.x:stop.x, start.y:stop.y] for frame in frames]
+        section = self.get_section()
+        min_x = (((section % (1920 // 120))) * 120) - 1
+        min_y = (((section // (1920 // 120))) * 120) - 1
+        max_x = (min_x + 120) - 1
+        max_y = (min_y + 120) - 1
+        print(min_y)
+
+        frames = [[frame[min_y:max_y, min_x:max_x]] for frame in frames]
         return frames
+    
+
 
     def region(self):
         raise Exception("Not implemented")
 
     def animate(self):
-        imgs = self.cutout()
-        frames = []  # for storing the generated images
+        import matplotlib.animation as animation
+        from IPython.core.display import HTML, display
+        
+        imgs = self.cutout() # some array of images
+        # imgs = [[frame[min_y:max_y, min_x:max_x]] for frame in frames]
+        animation_frames = []  # for storing the generated images
 
         fig = plt.figure()
         for img in imgs:
             # frames.append([plt.imshow(img[i], cmap=cm.Greys_r, animated=True)])
-            frames.append([plt.imshow(img, animated=True)])
+            animation_frames.append([plt.imshow(img[0], animated=True)])
+
 
         ani = animation.ArtistAnimation(fig,
-                                        frames,
+                                        animation_frames,
                                         interval=100,
                                         blit=True,
                                         repeat_delay=10)
-        plt.show()
+        # ani.save('movie.mp4')
+        display(HTML(ani.to_jshtml()))
 
     def calculate_moment(self):
         frames = []
@@ -534,7 +543,7 @@ def is_good_trigger(event, trigger_treshold=5):
         print(f"INFO:\tBad line fit {r}")
         return False
 
-    #
+    # TODO: We should check for speed (too slow events are bad)
     # if event.too_slow():
     #     return False
 
@@ -585,7 +594,6 @@ def combine_frames(frame_list):
 
 
 def get_frames(path, start, stop):
-    print(f"path= {path}")
     capture = cv2.VideoCapture(path)
     capture.set(cv2.CAP_PROP_POS_FRAMES, start)
     frames = []
@@ -599,7 +607,6 @@ def get_frames(path, start, stop):
 
     for _ in range(stop - start + 1):
         status, frame = capture.read()
-        print(status, frame)
         frames.append(frame)
 
     return frames
@@ -622,6 +629,8 @@ def prepare_trigger_frame(trigger, size=(1920 // 120, 1080 // 120)):
 
 def show_trigger(trigger, size=(1920 // 120, 1080 // 120)):
     # plt.Figure(figsize=size)
+    from matplotlib.pyplot import figure
+    figure(figsize=size, dpi=80)
     result = prepare_trigger_frame(trigger)
     plt.imshow(result)
     plt.show()
