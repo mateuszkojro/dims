@@ -1,26 +1,37 @@
 import cython
 import pyximport
 
-pyximport.install()
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+
 import math
 
 import cv2
-from typing import NoReturn, Tuple, List, Union
+from typing import Tuple, List, Union
 import matplotlib.pyplot as plt
-from dataclasses import dataclass, astuple
 from functools import cache
 import imutils
 import numpy as np
 
 from collections import namedtuple
-from math import sqrt
+import scipy.optimize as optim
+import scipy.stats as stats
 
-Line = namedtuple('Line', ['a', 'b', 'r', 'delta_a', 'delta_b'])
+pyximport.install()
+
+Line = namedtuple('Line', ['a', 'b', 'r'])
+
+
+# Vec2 = namedtuple('Vec2', ['x','y'])
+@cython.cfunc
+def linear_func(x, a, b):
+    return a * x + b
+
 
 all_events = []
 
 
-# @dataclass(unsafe_hash=True)
+# # @dataclass(unsafe_hash=True)
 @cython.cclass
 class Vec2:
     x = cython.declare(cython.int, visibility='public')
@@ -73,8 +84,8 @@ class Event:
     filename: str
 
     def __init__(self, position: EventInfo, filename):
-        self.positions = []
-        self.positions.append(position)
+        self.positions = np.array([position])
+        # self.positions = np.append(self.positions,)
         self.first_point = position.frame_no
         self.last_changed = position.frame_no
         self.filename = filename
@@ -110,9 +121,13 @@ class Event:
     @cython.boundscheck(False)  # Deactivate bounds checking
     @cython.wraparound(False)  # Deactivate negative indexing.
     def add_if_similar(self, position: EventInfo) -> bool:
+        # FIXME: How long should it be
+        if len(self.positions) > 3 and self.point_to_line_distance(
+                position.position) > 5:
+            return False
         for item in self.positions:
-            if item.is_simillar_to(position, 5):
-                self.positions.append(position)
+            if item.is_simillar_to(position, 15):
+                self.positions = np.append(self.positions, position)
                 self.last_changed = position.frame_no
                 return True
         return False
@@ -139,37 +154,85 @@ class Event:
         start, stop = self.path()
         return euc_distance(start, stop)
 
+    # TODO: Odleglosc od odcinka
+    def line_segment_to_point_distance(self):
+        raise Exception("Not implemented")
+
+    def point_to_line_distance(self, point: Vec2):
+        a, b, r = self.fit_line()
+        a = abs(a * point.x + (-1) * point.y + b)
+        denominator = a**2 + (-1)**2
+        return a / denominator
+
+    def pearsons_coef(self):
+        N = len(self.positions)
+        xs = np.zeros(N)
+        ys = np.zeros(N)
+        for i, point in enumerate(self.positions):
+            xs[i] = point.position.x
+            ys[i] = point.position.y
+        return stats.pearsonr(xs, ys)
+
+    # TODO: I think mine was much faster
     @cython.boundscheck(False)  # Deactivate bounds checking
     @cython.wraparound(False)  # Deactivate negative indexing.
-    def fit_line(self) -> Line:
-        points = [p.position for p in self.positions]
-        s = len(points)
-        s_x = sum(p.x for p in points)
-        s_y = sum(p.y for p in points)
-        s_xx = sum(p.x**2 for p in points)
-        s_yy = sum(p.y**2 for p in points)
-        s_xy = sum(p.x * p.y for p in points)
-        delta = s * s_xx - (s_x**2)
+    def fit_line(self):
 
-        if s == 0 or delta == 0 or s - 2 == 0:
-            print(
-                f"ERR\tDivide by 0 while fitting the line: s={s}, delta={delta}"
-            )
-            return Line(0, 0, 0, 0, 0)
+        N = len(self.positions)
+        xs = np.zeros(N)
+        ys = np.zeros(N)
+        for i, point in enumerate(self.positions):
+            xs[i] = point.position.x
+            ys[i] = point.position.y
 
-        a = (s * s_xy - s_x * s_y) / delta
-        b = (s_xx * s_y - s_x * s_xy) / delta
+        (a, b), covariance_matrix = optim.curve_fit(linear_func, xs, ys)
 
-        chi_sqr = s_yy - a * s_xy - b * s_y
+        r_sqr, _ = stats.pearsonr(xs, ys)
 
-        delta_a = chi_sqr / (s - 2) * s / delta
-        delta_b = delta_a * s_xx / s
+        return Line(a, b,
+                    r_sqr)  #, covariance_matrix[0, 0], covariance_matrix[1,1])
 
-        r = (s * s_xy - s_x * s_y) / sqrt(
-            (s * s_xx - s_x**2) * (s * s_yy - s_y**2))
-        r = abs(r)
+        # points = [p.position for p in self.positions]
+        # s = float(len(points))
+        # s_x = sum(float(p.x) for p in points)
+        # s_y = sum(float(p.y) for p in points)
+        # s_xx = sum(float(p.x)**2.0 for p in points)
+        # s_yy = sum(float(p.y)**2.0 for p in points)
+        # s_xy = sum(float(p.x) * float(p.y) for p in points)
+        # delta = s * s_xx - (s_x**2.0)
 
-        return Line(a, b, r, delta_a, delta_b)
+        # if s == 0 or delta == 0 or s - 2 == 0:
+        #     print(f"ERR\tDivide by 0 while fitting the line: \n"
+        #           f"s: {s}\n"
+        #           f"s_x: {s_x}, s_xx: {s_xx}\n"
+        #           f"s_y: {s_y}, s_yy: {s_yy}\n"
+        #           f"s_xy: {s_xy}, delta: {delta}\n"
+        #           f"points: {points}")
+        #     return Line(0, 0, 0, 0, 0)
+
+        # a = (s * s_xy - s_x * s_y) / delta
+        # b = (s_xx * s_y - s_x * s_xy) / delta
+
+        # chi_sqr = s_yy - a * s_xy - b * s_y
+
+        # delta_a = chi_sqr / (s - 2) * s / delta
+        # delta_b = delta_a * s_xx / s
+
+        # denominator = sqrt((s * s_xx - (s_x**2)) * (s * s_yy - (s_y**2)))
+
+        # if denominator == 0:
+        #     print(f"ERR\tDivide by 0 while fitting the line: \n"
+        #           f"s: {s}\n"
+        #           f"s_x: {s_x}, s_xx: {s_xx}\n"
+        #           f"s_y: {s_y}, s_yy: {s_yy}\n"
+        #           f"s_xy: {s_xy}, delta: {delta}, denominator: {denominator}\n"
+        #           f"points: {points}\n")
+        #     return Line(0, 0, 0, 0, 0)
+
+        # r = (s * s_xy - s_x * s_y) / denominator
+        # r = abs(r)
+
+        # return Line(a, b, r, delta_a, delta_b)
 
 
 # @dataclass(frozen=True)
@@ -183,8 +246,16 @@ class TriggerInfo:
     bounding_box: Tuple[Vec2]
     line_fit: float
 
-    def __init__(self, event, length, filename, start_frame, end_frame,
-                 event_count, bounding_box, line_fit):
+    def __init__(self,
+                 event,
+                 length,
+                 filename,
+                 start_frame,
+                 end_frame,
+                 event_count,
+                 bounding_box,
+                 line_fit=None):
+
         self.event = event
         self.length = length
         self.filename = filename
@@ -203,7 +274,7 @@ class TriggerInfo:
         x = x // 120
         y = y // 120
 
-        return int(y * (1920 / 120)) + int(x)
+        return int(y * (1920 // 120)) + int(x)
 
     # TODO: Test that to be sure
     def get_center(self):
@@ -216,8 +287,44 @@ class TriggerInfo:
         filename = self.filename.replace('/', '@')
         return f"{filename}_{self.get_section()}_{self.start_frame}_{self.end_frame}"
 
-    def cutout(self):
-        pass
+    def section_cutout(self):
+        frames = get_frames(self.filename, self.start_frame, self.end_frame)
+        section = self.get_section()
+        min_x = (((section % (1920 // 120))) * 120) - 1
+        min_y = (((section // (1920 // 120))) * 120) - 1
+        max_x = (min_x + 120) - 1
+        max_y = (min_y + 120) - 1
+        print(min_y)
+
+        frames = [[frame[min_y:max_y, min_x:max_x]] for frame in frames]
+        return frames
+    
+
+
+    def region(self):
+        raise Exception("Not implemented")
+
+    def animate(self):
+        import matplotlib.animation as animation
+        from IPython.core.display import HTML, display
+        
+        imgs = self.cutout() # some array of images
+        # imgs = [[frame[min_y:max_y, min_x:max_x]] for frame in frames]
+        animation_frames = []  # for storing the generated images
+
+        fig = plt.figure()
+        for img in imgs:
+            # frames.append([plt.imshow(img[i], cmap=cm.Greys_r, animated=True)])
+            animation_frames.append([plt.imshow(img[0], animated=True)])
+
+
+        ani = animation.ArtistAnimation(fig,
+                                        animation_frames,
+                                        interval=100,
+                                        blit=True,
+                                        repeat_delay=10)
+        # ani.save('movie.mp4')
+        display(HTML(ani.to_jshtml()))
 
     def calculate_moment(self):
         frames = []
@@ -244,6 +351,7 @@ class TriggerInfo:
                                               row[4]), Vec2(row[5], row[6])),
                            length=row[7],
                            event_count=row[8],
+                           line_fit=[0],
                            event=None)
 
     @staticmethod
@@ -430,12 +538,12 @@ def is_good_trigger(event, trigger_treshold=5):
         return False
 
     # FIXME: That needs to be some dynamic value
-    a, b, r, _, _ = event.fit_line()
-    if r < 0.8:
+    r = event.pearsons_coef()[0]
+    if abs(r) < 0.8:
         print(f"INFO:\tBad line fit {r}")
         return False
 
-    #
+    # TODO: We should check for speed (too slow events are bad)
     # if event.too_slow():
     #     return False
 
@@ -521,6 +629,8 @@ def prepare_trigger_frame(trigger, size=(1920 // 120, 1080 // 120)):
 
 def show_trigger(trigger, size=(1920 // 120, 1080 // 120)):
     # plt.Figure(figsize=size)
+    from matplotlib.pyplot import figure
+    figure(figsize=size, dpi=80)
     result = prepare_trigger_frame(trigger)
     plt.imshow(result)
     plt.show()

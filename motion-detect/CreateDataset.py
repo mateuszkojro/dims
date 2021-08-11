@@ -76,7 +76,7 @@ def analyze(path, debug=False):
         now = time.monotonic()
         # if file takes more than 5 minutes stop
         if now - start_time > 5 * 60:
-            print(f"ERR: Analyzing file took too long - stopping ({path})")
+            print(f"ERR:\tAnalyzing file took too long - stopping ({path})")
             new_triggers = ca.on_destroy(events)
             if new_triggers is not None:
                 triggers += new_triggers
@@ -96,7 +96,7 @@ if __name__ == '__main__':
     path = sys.argv[1] \
         if len(sys.argv) > 1 \
         else "/run/media/mateusz/Seagate Expansion Drive/all"
-    
+
     out_path = sys.argv[2] \
         if len(sys.argv) > 2 \
         else "out"
@@ -104,8 +104,8 @@ if __name__ == '__main__':
     file_list = recursive_file_list(path)
 
     if debug:
-        random.shuffle(file_list)
-        file_list = file_list[:10]
+        # random.shuffle(file_list)
+        file_list = file_list[700:710]
 
     def apply_analyze(file):
         return analyze(file, debug=debug)
@@ -122,3 +122,10 @@ if __name__ == '__main__':
             all_triggers += analyze(file)
 
     utils.save(all_triggers, out_path)
+
+    print()
+    print("-" * 30)
+    print("\t" + "Complete!")
+    print("-" * 30)
+    print()
+    print("\a")
