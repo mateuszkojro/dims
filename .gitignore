@@ -5,4 +5,13 @@ my_avi_parser/build
 video_analyzer/build
 */.idea
 *.npy
+*/__pycache__
+*/build
+motion-detect/*.c
+motion-detect/*.html
+motion-detect/*.cpython*
+motion-detect/results/
+
+*.csv
 */.ipynb_checkpoints
+/data

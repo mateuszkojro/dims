@@ -1,8 +1,10 @@
 import os
 import random
 
+
 class StopCrawl(Exception):
     pass
+
 
 def get_ext(path):
     return os.path.splitext(path)[-1]
@@ -26,11 +28,30 @@ def crawl(path, function, extension=".avi", debug=False):
                 print(f"Analyzing file {i}/{size} ({i / size * 100:2}%)")
                 result += function(abs_path, debug=debug)
                 i += 1
-        if debug and i ==10:
-            break 
+        if debug and i == 10:
+            break
     return result
 
 
+def recursive_file_list(path, extension=".avi", debug=False):
+    initial_path = path
+    nodes = os.listdir(path)
+
+    collected_files = []
+
+    for node in nodes:
+        abs_path = initial_path + "/" + node
+
+        if os.path.isdir(abs_path):
+            print(f"INFO:\tFound subdirectory: {abs_path}")
+            collected_files += recursive_file_list(abs_path)
+            continue
+
+        if get_ext(node) == ".avi":
+            collected_files.append(abs_path)
+
+    return collected_files
+
+
 if __name__ == '__main__':
-    f = lambda file: print(file)
-    crawl(".", f)
+    print(recursive_file_list("."))
