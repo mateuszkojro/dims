@@ -6,7 +6,7 @@ import imutils
 import sys
 import multiprocessing as mp
 import random
-
+import numpy as np
 
 import utils
 from FileCrawler import StopCrawl, recursive_file_list
@@ -22,6 +22,8 @@ pyximport.install()
 def analyze(path, debug=False):
     try:
         info(f"Analyzing: {path}")
+        # triggers = np.array([])
+        # events = np.array([])
         triggers = []
         events = []
         frame_number = 0
@@ -91,7 +93,7 @@ def analyze(path, debug=False):
         critical(f"analysys failed for file: {path} with: {error}")
         video_capture.release()
         cv2.destroyAllWindows()
-        return []
+        return triggers
     return triggers
 
 
@@ -120,7 +122,7 @@ if __name__ == '__main__':
 
     def apply_analyze(file):
         return analyze(file, debug=debug)
-    
+
     all_triggers = []
     if multithreading:
         with mp.Pool(threads) as p:
