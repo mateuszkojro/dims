@@ -19,6 +19,8 @@ from utils import Vec2, Rect, get_frames, combine_frames, resize_frame
 from collections import namedtuple
 import scipy.optimize as optim
 import scipy.stats as stats
+# from scipy.spatial import distance
+from math import dist
 
 from log import *
 
@@ -103,26 +105,11 @@ class Event:
 
         return rect
 
-        # min_x, min_y = self.positions[0].center()
-        # max_x, max_y = self.positions[0].center()
-        # for item in self.positions:
-        #     event = item.center()
-        #     if event.x < min_x:
-        #         min_x = event.x
-        #     if event.y < min_y:
-        #         min_y = event.y
-        #     if event.x > max_x:
-        #         max_x = event.x
-        #     if event.y > max_y:
-        #         max_y = event.y
-        # minimal = Vec2(math.floor(min_x), math.floor(min_y))
-        # maximal = Vec2(math.floor(max_x), math.floor(max_y))
-        # return minimal, maximal
-
+    @cython.wraparound(False)  # Deactivate negative indexing.
     @cython.boundscheck(False)  # Deactivate bounds checking
     def path(self) -> Tuple[Vec2]:
         start = self.positions[0].position
-        end = self.positions[-1].position
+        end = self.positions[len(self.positions) - 1].position
         return start, end
 
     @cython.boundscheck(False)  # Deactivate bounds checking
@@ -166,7 +153,7 @@ class Event:
         raise Exception("Not implemented")
 
     def point_to_line_distance(self, point: Vec2):
-        a, b, r = self.fit_line()
+        a, b, _ = self.fit_line()
         a = abs(a * point.x + (-1) * point.y + b)
         denominator = a**2 + (-1)**2
         return a / denominator
@@ -203,7 +190,7 @@ class Event:
 @cython.wraparound(False)  # Deactivate negative indexing.
 @cython.ccall
 def euc_distance(pos1: Vec2, pos2: Vec2) -> cython.float:
-    return math.sqrt((pos1.x - pos2.x)**2 + (pos1.y - pos2.y)**2)
+    return  dist(pos1, pos2) # math.sqrt((pos1.x - pos2.x)**2 + (pos1.y - pos2.y)**2)
 
 
 # Adapted form:
