@@ -11,6 +11,7 @@ motion-detect/*.c
 motion-detect/*.html
 motion-detect/*.cpython*
 motion-detect/results/
+motion-detect/data/
 
 *.csv
 */.ipynb_checkpoints
