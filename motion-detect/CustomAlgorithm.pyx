@@ -14,7 +14,7 @@ import imutils
 import numpy as np
 
 from TriggerInfo import TriggerInfo
-from utils import Vec2, get_frames, combine_frames, resize_frame
+from utils import Vec2, Rect, get_frames, combine_frames, resize_frame
 
 from collections import namedtuple
 import scipy.optimize as optim
@@ -84,22 +84,40 @@ class Event:
     @cache
     @cython.boundscheck(False)  # Deactivate bounds checking
     @cython.wraparound(False)  # Deactivate negative indexing.
-    def bounding_rect(self) -> Tuple[Vec2]:
-        min_x, min_y = self.positions[0].center()
-        max_x, max_y = self.positions[0].center()
-        for item in self.positions:
-            event = item.center()
-            if event.x < min_x:
-                min_x = event.x
-            if event.y < min_y:
-                min_y = event.y
-            if event.x > max_x:
-                max_x = event.x
-            if event.y > max_y:
-                max_y = event.y
-        minimal = Vec2(math.floor(min_x), math.floor(min_y))
-        maximal = Vec2(math.floor(max_x), math.floor(max_y))
-        return minimal, maximal
+    def bounding_rect(self) -> Rect:
+        N = len(self.positions)
+
+        xs = np.empty(N)
+        ys = np.empty(N)
+
+        for i, position in enumerate(self.positions):
+            xs[i] = position.center().x
+            ys[i] = position.center().y
+
+        rect = Rect(
+            min_x=np.min(xs),
+            min_y=np.min(ys),
+            max_x=np.max(xs),
+            max_y=np.max(ys),
+        )
+
+        return rect
+
+        # min_x, min_y = self.positions[0].center()
+        # max_x, max_y = self.positions[0].center()
+        # for item in self.positions:
+        #     event = item.center()
+        #     if event.x < min_x:
+        #         min_x = event.x
+        #     if event.y < min_y:
+        #         min_y = event.y
+        #     if event.x > max_x:
+        #         max_x = event.x
+        #     if event.y > max_y:
+        #         max_y = event.y
+        # minimal = Vec2(math.floor(min_x), math.floor(min_y))
+        # maximal = Vec2(math.floor(max_x), math.floor(max_y))
+        # return minimal, maximal
 
     @cython.boundscheck(False)  # Deactivate bounds checking
     def path(self) -> Tuple[Vec2]:
@@ -176,10 +194,10 @@ class Event:
 
         (a, b), covariance_matrix = optim.curve_fit(linear_func, xs, ys)
 
-        r_sqr = None#, _ = stats.pearsonr(xs, ys)
+        r_sqr = None  #, _ = stats.pearsonr(xs, ys)
 
-        return Line(a, b,
-                    r_sqr)
+        return Line(a, b, r_sqr)
+
 
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)  # Deactivate negative indexing.
@@ -221,9 +239,6 @@ def save_event(event: Event) -> TriggerInfo:
                        bounding_box=event.bounding_rect(),
                        line_fit=event.fit_line()[2],
                        event=event)
-
-
-
 
 
 @cython.boundscheck(False)  # Deactivate bounds checking
@@ -338,8 +353,8 @@ def annotate_frame(frame,
             cv2.line(frame, rect[0], rect[1], color, 3)
 
         if draw_box:
-            rect = event.bounding_rect()
-            cv2.rectangle(frame, rect[0], rect[1], (0, 255, 0),
+            (min_x, min_y), (max_x, max_y) = event.bounding_rect()
+            cv2.rectangle(frame, (min_x, min_y), (max_x, max_y), (0, 255, 0),
                           2)
 
         if draw_confidence:
@@ -359,11 +374,9 @@ def on_destroy(event_list):
     return triggers if len(triggers) > 0 else None
 
 
-
-
 def add_marker(frame, trigger):
-    rect = trigger.bounding_box
-    cv2.rectangle(frame, rect[0], rect[1], (0, 255, 0), 2)
+    (min_x, min_y), (max_x, max_y) = trigger.bounding_box
+    cv2.rectangle(frame, (min_x, min_y), (max_x, max_y), (0, 255, 0), 2)
     return frame
 
 

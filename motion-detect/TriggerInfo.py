@@ -11,7 +11,7 @@ from utils import Vec2, get_frames, combine_frames, resize_frame
 
 # @dataclass(frozen=True)
 class TriggerInfo:
-    event:Event
+    event: Event
     length: cython.int
     filename: str
     start_frame: cython.int
@@ -41,9 +41,7 @@ class TriggerInfo:
 
     # TODO: Test that to be sure
     def get_section(self):
-        start, end = self.bounding_box
-        x = start.x + abs(end.x - start.x) / 2
-        y = start.y + abs(end.y - start.y) / 2
+        x, y = self.get_center()
 
         x = x // 120
         y = y // 120
@@ -52,9 +50,10 @@ class TriggerInfo:
 
     # TODO: Test that to be sure
     def get_center(self):
-        start, end = self.bounding_box
-        x = start.x + abs(end.x - start.x) / 2
-        y = start.y + abs(end.y - start.y) / 2
+        min_x, min_y, max_x, max_y = self.bounding_box
+        x = min_x + abs(max_x - min_x) / 2
+        y = min_y + abs(max_y - min_y) / 2
+
         return Vec2(x, y)
 
     def get_uid(self):
@@ -118,8 +117,7 @@ class TriggerInfo:
         return TriggerInfo(filename=row[0],
                            start_frame=int(row[1]),
                            end_frame=int(row[2]),
-                           bounding_box=(Vec2(row[3],
-                                              row[4]), Vec2(row[5], row[6])),
+                           bounding_box=(row[3], row[4], row[5], row[6]),
                            length=row[7],
                            event_count=row[8],
                            line_fit=[0],
@@ -156,8 +154,7 @@ class TriggerInfo:
         # frame = combined
 
         for point in self.event.positions:
-            frame = cv2.circle(frame,
-                               point.center(), 1, (0, 255, 0), 1)
+            frame = cv2.circle(frame, point.center(), 1, (0, 255, 0), 1)
 
         frame = resize_frame(frame)
         left_top, right_bottom = self.bounding_box

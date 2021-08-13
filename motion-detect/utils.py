@@ -25,6 +25,8 @@ from collections import namedtuple
 
 Vec2 = namedtuple('Vec2', ['x', 'y'])
 
+Rect = namedtuple('Rect', ['min_x', 'min_y', 'max_x', 'max_y'])
+
 
 def combine_frames(frame_list):
     if len(frame_list) > 50:
@@ -100,20 +102,19 @@ def save(all_triggers, out_name="out"):
 
     for clip in all_triggers:
         for trigger in clip:
-            start, end = trigger.bounding_box
+            min_x, min_y, max_x, max_y = trigger.bounding_box
             rows.append([
                 trigger.filename, trigger.start_frame, trigger.end_frame,
-                start.x, start.y, end.x, end.y, trigger.length,
+                min_x, min_y, max_x, max_y, trigger.length,
                 trigger.event_count,
                 trigger.get_section(), trigger.line_fit
             ])
 
     df = pd.DataFrame(data=rows,
                       columns=[
-                          "file", "start_frame", "end_frame", "box_up_left_x",
-                          "box_up_left_y", "box_down_right_x",
-                          "box_down_right_y", "length", "count", "section",
-                          "line_fir"
+                          "file", "start_frame", "end_frame", "box_min_x",
+                          "box_min_y", "box_max_x", "box_max_y", "length",
+                          "count", "section", "line_fir"
                       ])
 
     df.to_csv(out_name + ".csv")
