@@ -2,11 +2,61 @@ import cython
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
+from typing import Tuple
 
+from utils import Vec2, get_frames, combine_frames, resize_frame
 from log import err
 
-from typing import Tuple
-from utils import Vec2, get_frames, combine_frames, resize_frame
+from collections import namedtuple
+
+Trigger = namedtuple('Trigger', [
+    'filename', 'length', 'start_frame', 'end_frame', 'bounding_rect',
+    'section', 'line_fit'
+])
+
+
+def get_center(trigger: Trigger):
+    """ Calculate center of a @Trigger """
+    min_x, min_y, max_x, max_y = trigger.bounding_rect
+    x = min_x + abs(max_x - min_x) / 2
+    y = min_y + abs(max_y - min_y) / 2
+
+    return Vec2(x, y)
+
+
+def get_section(trigger: Trigger):
+    """ Calculate number of a section containing center of the @Trigger """
+    x, y = get_center(trigger)
+
+    x = x // 120
+    y = y // 120
+
+    return int(y * (1920 // 120)) + int(x)
+
+
+def get_uid(trigger: Trigger):
+    pass
+
+
+def cut_section(trigger: Trigger):
+    """Cut section of a frame where trigger was detected"""
+    pass
+
+
+def animate(trigger: Trigger):
+    pass
+
+
+def show(trigger: Trigger):
+    pass
+
+
+def show_section(trigger: Trigger):
+    pass
+
+
+def animate(trigger: Trigger):
+    pass
 
 
 # @dataclass(frozen=True)
@@ -67,7 +117,6 @@ class TriggerInfo:
         min_y = (((section // (1920 // 120))) * 120) - 1
         max_x = (min_x + 120) - 1
         max_y = (min_y + 120) - 1
-        print(min_y)
 
         frames = [[frame[min_y:max_y, min_x:max_x]] for frame in frames]
         return frames
