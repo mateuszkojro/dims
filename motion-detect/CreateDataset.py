@@ -7,8 +7,11 @@ import sys
 import multiprocessing as mp
 import random
 
+
 import utils
 from FileCrawler import StopCrawl, recursive_file_list
+from log import *
+
 import CustomAlgorithm as ca
 
 pyximport.install()
@@ -18,7 +21,7 @@ pyximport.install()
 @cython.wraparound(False)  # Deactivate negative indexing.
 def analyze(path, debug=False):
     try:
-        print(f"Analyzing: {path}")
+        info(f"Analyzing: {path}")
         triggers = []
         events = []
         frame_number = 0
@@ -70,14 +73,14 @@ def analyze(path, debug=False):
                 if key == ord('s'):
                     with open("interesting", "a") as f:
                         f.write(path + frame_number + "\n")
-                    print("INFO: Saved image")
+                    info("Saved image")
 
             frame_number += 1
 
             now = time.monotonic()
             # if file takes more than 5 minutes stop
             if now - start_time > 5 * 60:
-                print(f"ERR:\tAnalyzing file took too long - stopping ({path})")
+                err(f"Analyzing file took too long - stopping ({path})")
                 new_triggers = ca.on_destroy(events)
                 if new_triggers is not None:
                     triggers += new_triggers
@@ -85,7 +88,7 @@ def analyze(path, debug=False):
         video_capture.release()
         cv2.destroyAllWindows()
     except Exception as error:
-        print(f"CRITICAL\tanalysys failed for file: {path} with: {error}")
+        critical(f"analysys failed for file: {path} with: {error}")
         video_capture.release()
         cv2.destroyAllWindows()
         return []
@@ -112,13 +115,13 @@ if __name__ == '__main__':
         # random.shuffle(file_list)
         file_list = file_list[700:710]
 
+
+    info(f"Found {len(file_list)} avi files")
+
     def apply_analyze(file):
         return analyze(file, debug=debug)
-
+    
     all_triggers = []
-
-    print(f"INFO:\tFound {len(file_list)} avi files")
-
     if multithreading:
         with mp.Pool(threads) as p:
             all_triggers = p.map(apply_analyze, file_list)

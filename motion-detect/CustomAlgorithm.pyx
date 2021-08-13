@@ -13,9 +13,14 @@ from functools import cache
 import imutils
 import numpy as np
 
+from TriggerInfo import TriggerInfo
+from utils import Vec2, get_frames, combine_frames, resize_frame
+
 from collections import namedtuple
 import scipy.optimize as optim
 import scipy.stats as stats
+
+from log import *
 
 pyximport.install()
 
@@ -31,28 +36,12 @@ def linear_func(x, a, b):
 all_events = []
 
 
-# # @dataclass(unsafe_hash=True)
-@cython.cclass
-class Vec2:
-    x = cython.declare(cython.int, visibility='public')
-    y = cython.declare(cython.int, visibility='public')
-
-    def __init__(self, x, y):
-        self.x: cython.int = x
-        self.y: cython.int = y
-
-    @cache
-    def tuple(self) -> Tuple[int, int]:
-        # return astuple(self)
-        return self.x, self.y
-
-
 # @dataclass(frozen=True)
-@cython.cclass
+# @cython.cclass
 class EventInfo:
-    frame_no = cython.declare(cython.int, visibility='public')
-    position = cython.declare(Vec2, visibility='public')
-    size = cython.declare(Vec2, visibility='public')
+    # frame_no = cython.declare(cython.int, visibility='public')
+    # position = cython.declare(Tuple, visibility='public')
+    # size = cython.declare(Tuple, visibility='public')
 
     def __init__(self, frame_no: int, position: Vec2, size: int):
         self.size: cython.int = size
@@ -66,7 +55,7 @@ class EventInfo:
         y: cython.int = self.position.y + int(self.size.y / 2)
         return Vec2(int(x), int(y))
 
-    @cython.ccall
+    # @cython.ccall
     def is_simillar_to(self, event, treshold: float):
         # check the time between events
         if abs(self.frame_no - event.frame_no) > 5:
@@ -96,8 +85,8 @@ class Event:
     @cython.boundscheck(False)  # Deactivate bounds checking
     @cython.wraparound(False)  # Deactivate negative indexing.
     def bounding_rect(self) -> Tuple[Vec2]:
-        min_x, min_y = self.positions[0].center().tuple()
-        max_x, max_y = self.positions[0].center().tuple()
+        min_x, min_y = self.positions[0].center()
+        max_x, max_y = self.positions[0].center()
         for item in self.positions:
             event = item.center()
             if event.x < min_x:
@@ -126,7 +115,7 @@ class Event:
                 position.position) > 5:
             return False
         for item in self.positions:
-            if item.is_simillar_to(position, 15):
+            if item.is_simillar_to(position, 20):
                 self.positions = np.append(self.positions, position)
                 self.last_changed = position.frame_no
                 return True
@@ -166,8 +155,8 @@ class Event:
 
     def pearsons_coef(self):
         N = len(self.positions)
-        xs = np.zeros(N)
-        ys = np.zeros(N)
+        xs = np.empty(N)
+        ys = np.empty(N)
         for i, point in enumerate(self.positions):
             xs[i] = point.position.x
             ys[i] = point.position.y
@@ -187,214 +176,11 @@ class Event:
 
         (a, b), covariance_matrix = optim.curve_fit(linear_func, xs, ys)
 
-        r_sqr, _ = stats.pearsonr(xs, ys)
+        r_sqr = None#, _ = stats.pearsonr(xs, ys)
 
         return Line(a, b,
-                    r_sqr)  #, covariance_matrix[0, 0], covariance_matrix[1,1])
+                    r_sqr)
 
-        # points = [p.position for p in self.positions]
-        # s = float(len(points))
-        # s_x = sum(float(p.x) for p in points)
-        # s_y = sum(float(p.y) for p in points)
-        # s_xx = sum(float(p.x)**2.0 for p in points)
-        # s_yy = sum(float(p.y)**2.0 for p in points)
-        # s_xy = sum(float(p.x) * float(p.y) for p in points)
-        # delta = s * s_xx - (s_x**2.0)
-
-        # if s == 0 or delta == 0 or s - 2 == 0:
-        #     print(f"ERR\tDivide by 0 while fitting the line: \n"
-        #           f"s: {s}\n"
-        #           f"s_x: {s_x}, s_xx: {s_xx}\n"
-        #           f"s_y: {s_y}, s_yy: {s_yy}\n"
-        #           f"s_xy: {s_xy}, delta: {delta}\n"
-        #           f"points: {points}")
-        #     return Line(0, 0, 0, 0, 0)
-
-        # a = (s * s_xy - s_x * s_y) / delta
-        # b = (s_xx * s_y - s_x * s_xy) / delta
-
-        # chi_sqr = s_yy - a * s_xy - b * s_y
-
-        # delta_a = chi_sqr / (s - 2) * s / delta
-        # delta_b = delta_a * s_xx / s
-
-        # denominator = sqrt((s * s_xx - (s_x**2)) * (s * s_yy - (s_y**2)))
-
-        # if denominator == 0:
-        #     print(f"ERR\tDivide by 0 while fitting the line: \n"
-        #           f"s: {s}\n"
-        #           f"s_x: {s_x}, s_xx: {s_xx}\n"
-        #           f"s_y: {s_y}, s_yy: {s_yy}\n"
-        #           f"s_xy: {s_xy}, delta: {delta}, denominator: {denominator}\n"
-        #           f"points: {points}\n")
-        #     return Line(0, 0, 0, 0, 0)
-
-        # r = (s * s_xy - s_x * s_y) / denominator
-        # r = abs(r)
-
-        # return Line(a, b, r, delta_a, delta_b)
-
-
-# @dataclass(frozen=True)
-class TriggerInfo:
-    event: Union[Event, None]
-    length: cython.int
-    filename: str
-    start_frame: cython.int
-    end_frame: cython.int
-    event_count: cython.int
-    bounding_box: Tuple[Vec2]
-    line_fit: float
-
-    def __init__(self,
-                 event,
-                 length,
-                 filename,
-                 start_frame,
-                 end_frame,
-                 event_count,
-                 bounding_box,
-                 line_fit=None):
-
-        self.event = event
-        self.length = length
-        self.filename = filename
-        self.start_frame = start_frame
-        self.end_frame = end_frame
-        self.event_count = event_count
-        self.bounding_box = bounding_box
-        self.line_fit = line_fit
-
-    # TODO: Test that to be sure
-    def get_section(self):
-        start, end = self.bounding_box
-        x = start.x + abs(end.x - start.x) / 2
-        y = start.y + abs(end.y - start.y) / 2
-
-        x = x // 120
-        y = y // 120
-
-        return int(y * (1920 // 120)) + int(x)
-
-    # TODO: Test that to be sure
-    def get_center(self):
-        start, end = self.bounding_box
-        x = start.x + abs(end.x - start.x) / 2
-        y = start.y + abs(end.y - start.y) / 2
-        return Vec2(x, y)
-
-    def get_uid(self):
-        filename = self.filename.replace('/', '@')
-        return f"{filename}_{self.get_section()}_{self.start_frame}_{self.end_frame}"
-
-    def section_cutout(self):
-        frames = get_frames(self.filename, self.start_frame, self.end_frame)
-        section = self.get_section()
-        min_x = (((section % (1920 // 120))) * 120) - 1
-        min_y = (((section // (1920 // 120))) * 120) - 1
-        max_x = (min_x + 120) - 1
-        max_y = (min_y + 120) - 1
-        print(min_y)
-
-        frames = [[frame[min_y:max_y, min_x:max_x]] for frame in frames]
-        return frames
-    
-
-
-    def region(self):
-        raise Exception("Not implemented")
-
-    def animate(self):
-        import matplotlib.animation as animation
-        from IPython.core.display import HTML, display
-        
-        imgs = self.cutout() # some array of images
-        # imgs = [[frame[min_y:max_y, min_x:max_x]] for frame in frames]
-        animation_frames = []  # for storing the generated images
-
-        fig = plt.figure()
-        for img in imgs:
-            # frames.append([plt.imshow(img[i], cmap=cm.Greys_r, animated=True)])
-            animation_frames.append([plt.imshow(img[0], animated=True)])
-
-
-        ani = animation.ArtistAnimation(fig,
-                                        animation_frames,
-                                        interval=100,
-                                        blit=True,
-                                        repeat_delay=10)
-        # ani.save('movie.mp4')
-        display(HTML(ani.to_jshtml()))
-
-    def calculate_moment(self):
-        frames = []
-        capture = cv2.VideoCapture(self.filename)
-        capture.set(cv2.CAP_PROP_POS_FRAMES, self.start_frame)
-        for i in range(self.end_frame - self.start_frame):
-            status, frame = capture.read()
-            frames.append(frame)
-
-        combined = self.combine_frames(frames)
-
-        raise Exception("Onl partialy implemented")
-
-    def get_frame_chunk(self):
-        raise Exception("Not implemented")
-
-    @staticmethod
-    def from_csv_row(row):
-        row = row[1:]
-        return TriggerInfo(filename=row[0],
-                           start_frame=int(row[1]),
-                           end_frame=int(row[2]),
-                           bounding_box=(Vec2(row[3],
-                                              row[4]), Vec2(row[5], row[6])),
-                           length=row[7],
-                           event_count=row[8],
-                           line_fit=[0],
-                           event=None)
-
-    @staticmethod
-    def combine_frames(frames):
-        if len(frames) == 0:
-            return None
-
-        # print(f"{np.ndim(frames)}")
-        if len(frames) > 50:
-            print("ERR: to many frames")
-            frames = frames[:50]
-        result = np.amax(frames, axis=1)
-
-        return result
-
-    def show(self) -> None:
-        frames = []
-        capture = cv2.VideoCapture(self.filename)
-        capture.set(cv2.CAP_PROP_POS_FRAMES, self.start_frame)
-        for i in range(self.end_frame - self.start_frame):
-            status, frame = capture.read()
-            frames.append(frame)
-
-        combined = self.combine_frames(frames)
-
-        if combined is None:
-            print("Empty frame")
-            return
-
-        # frame = combined
-
-        for point in self.event.positions:
-            frame = cv2.circle(frame,
-                               point.center().tuple(), 1, (0, 255, 0), 1)
-
-        frame = resize_frame(frame)
-        left_top, right_bottom = self.bounding_box
-
-        plt.imshow(frame)
-        plt.show()
-
-
-# @cache
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)  # Deactivate negative indexing.
 @cython.ccall
@@ -437,19 +223,7 @@ def save_event(event: Event) -> TriggerInfo:
                        event=event)
 
 
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)  # Deactivate negative indexing.
-@cython.ccall
-def resize_frame(image, width=1920):
-    # Scale image
-    image = imutils.resize(image, width=width)
-    x = y = 0
-    h = image.shape[0]
-    w = image.shape[1]
 
-    # Cut out the description
-    image = image[y:(h - 30), x:w]
-    return image
 
 
 @cython.boundscheck(False)  # Deactivate bounds checking
@@ -540,14 +314,13 @@ def is_good_trigger(event, trigger_treshold=5):
     # FIXME: That needs to be some dynamic value
     r = event.pearsons_coef()[0]
     if abs(r) < 0.8:
-        print(f"INFO:\tBad line fit {r}")
+        info(f"Bad line fit {r}")
         return False
 
     # TODO: We should check for speed (too slow events are bad)
     # if event.too_slow():
     #     return False
 
-    # TODO: Check how close to a line is it
     return True
 
 
@@ -562,15 +335,15 @@ def annotate_frame(frame,
         if draw_path:
             color = heatmap_color(event.lenght(),
                                   heatmap[1]) if heatmap else (0, 255, 0)
-            cv2.line(frame, rect[0].tuple(), rect[1].tuple(), color, 3)
+            cv2.line(frame, rect[0], rect[1], color, 3)
 
         if draw_box:
             rect = event.bounding_rect()
-            cv2.rectangle(frame, rect[0].tuple(), rect[1].tuple(), (0, 255, 0),
+            cv2.rectangle(frame, rect[0], rect[1], (0, 255, 0),
                           2)
 
         if draw_confidence:
-            cv2.putText(frame, f"{event.lenght():1f}q", rect[0].tuple(),
+            cv2.putText(frame, f"{event.lenght():1f}q", rect[0],
                         cv2.FONT_HERSHEY_SIMPLEX, 0.35, (100, 0, 0), 1)
 
 
@@ -586,35 +359,11 @@ def on_destroy(event_list):
     return triggers if len(triggers) > 0 else None
 
 
-def combine_frames(frame_list):
-    if len(frame_list) > 50:
-        print("ERR: to many frames")
-        frame_list = frame_list[:50]
-    return np.amax(frame_list, axis=0)
-
-
-def get_frames(path, start, stop):
-    capture = cv2.VideoCapture(path)
-    capture.set(cv2.CAP_PROP_POS_FRAMES, start)
-    frames = []
-    if stop is None:
-        stop = capture.get(cv2.CAP_PROP_FRAME_COUNT - 1)
-        status = True
-        while status:
-            status, frame = capture.read()
-            frames.append(frame)
-        return frames
-
-    for _ in range(stop - start + 1):
-        status, frame = capture.read()
-        frames.append(frame)
-
-    return frames
 
 
 def add_marker(frame, trigger):
     rect = trigger.bounding_box
-    cv2.rectangle(frame, rect[0].tuple(), rect[1].tuple(), (0, 255, 0), 2)
+    cv2.rectangle(frame, rect[0], rect[1], (0, 255, 0), 2)
     return frame
 
 

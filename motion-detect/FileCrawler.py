@@ -1,6 +1,6 @@
 import os
 import random
-
+from log import *
 
 class StopCrawl(Exception):
     pass
@@ -43,7 +43,7 @@ def recursive_file_list(path, extension=".avi", debug=False):
         abs_path = initial_path + "/" + node
 
         if os.path.isdir(abs_path):
-            print(f"INFO:\tFound subdirectory: {abs_path}")
+            info(f"Found subdirectory: {abs_path}")
             collected_files += recursive_file_list(abs_path)
             continue
 
