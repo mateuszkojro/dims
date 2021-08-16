@@ -25,7 +25,7 @@ class App(tk.Frame):
 
         except Exception:
             print(
-                f"Could not connect to device: {dev_name}, no commands will be sent"
+                f"Could not connect to device: {self.dev_name}, no commands will be sent"
             )
             self.serial_connection = None
 
