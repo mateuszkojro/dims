@@ -14,7 +14,7 @@ from log import *
 
 import CustomAlgorithm as ca
 
-pyximport.install()
+# pyximport.install(pyimport=True)
 
 
 @cython.boundscheck(False)  # Deactivate bounds checking
@@ -99,13 +99,18 @@ def analyze(path, debug=False):
 
 if __name__ == '__main__':
 
+
     debug = utils.get_setting("DEBUG", False)
-    threads = utils.get_setting("THREADS", mp.cpu_count() - 1)
+    threads = utils.get_setting("TH", mp.cpu_count() - 1)
     multithreading = utils.get_setting("MULTITHREADING", True)
+    cv_threads = utils.get_setting("CV_TH", 2)
+
+    # TODO: Lets check that on the other computer
+    cv2.setNumThreads(cv_threads)
 
     path = sys.argv[1] \
         if len(sys.argv) > 1 \
-        else "/run/media/mateusz/Seagate Expansion Drive/all"
+        else "/media/mateusz/Seagate Expansion Drive/all"
 
     out_path = sys.argv[2] \
         if len(sys.argv) > 2 \
@@ -116,7 +121,6 @@ if __name__ == '__main__':
     if debug:
         # random.shuffle(file_list)
         file_list = file_list[700:710]
-
 
     info(f"Found {len(file_list)} avi files")
 
