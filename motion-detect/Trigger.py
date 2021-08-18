@@ -10,10 +10,18 @@ Vec2 = namedtuple('Vec2', ['x', 'y'])
 
 Rect = namedtuple('Rect', ['min_x', 'min_y', 'max_x', 'max_y'])
 
-Trigger = namedtuple('Trigger', [
-    'filename', 'length', 'start_frame', 'end_frame', 'bounding_rect',
-    'section', 'line_fit'
-])
+Trigger = namedtuple(
+    'Trigger',
+    [
+        'filename',  # Path: filename 
+        'length',  # Idk if that is neded 
+        'start_frame',  # int: First frame on which event was recorded
+        'end_frame',  # int: Last frame on which event was recorded
+        'bounding_rect',  # @Rect: bounding rectangle 
+        'section',  # int: Section of the image containing center of the event
+        'time_block' # int: In which time block event starts
+        'line_fit'  # float: How well event can be fited to the line
+    ])
 
 
 def _assert(condition: bool, msg: str):
@@ -55,19 +63,26 @@ def read_row(row, base_path="./") -> Trigger:
     file = pathlib.Path(row["file"])
     # file = base_path / file
 
+    bounding_rect = Rect(
+        min_x=row["rect_min_x"],
+        min_y=row["rect_min_y"],
+        max_x=row["rect_max_x"],
+        max_y=row["rect_max_y"],
+    )
+
     return Trigger(filename=file,
                    length=row["length"],
                    start_frame=row["start_frame"],
                    end_frame=row["end_frame"],
-                   bounding_rect=row["bounding_rect"],
+                   bounding_rect=bounding_rect,
                    section=row["section"],
                    line_fit=row["line_fit"])
 
 
 def read_df(df: pd.DataFrame, base_path="./") -> np.array:
-    """ Convert df int numpy arry containing triggers """
+    """ Convert df int numpy arry containing @Triggers """
     N = df.shape[0]
-    all_triggers = np.empty(dtype=object)
+    all_triggers = np.empty(N, dtype=object)
 
     for idx, row in df.iterrows():
         all_triggers[idx] = read_row(row, base_path)
