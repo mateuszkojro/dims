@@ -1,14 +1,78 @@
-import serial
+# import serial
 import time
 import sys
 
 ############ Get camera informations ############
 
 
-def send_command(serial, command, args=None):
-    cmd = bytearray([0xff, 0x30, 0x30, 0x01, 0xd0, "some value", 0xef])
+def reqIrisPosition(serial):
+    command = bytearray([0x01, 0xc3])
+    arg = bytearray([0x01])
+    return send_command(serial, command, arg)
 
-    assert (False)
+
+def reqNDStatus(serial):
+    command = bytearray([0x01, 0xc5])
+    arg = bytearray([0x0])
+    return send_command(serial, command, arg)
+
+
+def reqGainStatus(serial):
+    command = bytearray([0x01, 0xc6])
+    arg = bytearray([0x0])
+    return send_command(serial, command, arg)
+
+
+def reqShutterStatus(serial):
+    command = bytearray([0x01, 0xc6])
+    arg = bytearray([0x1])
+    return send_command(serial, command, arg)
+
+
+def reqFanStatus(serial):
+    command = bytearray([0x01, 0xea])
+    arg = bytearray([0xa])
+    return send_command(serial, command, arg)
+
+
+def reqLensStatus(serial):
+    command = bytearray([0x01, 0xea])
+    arg = bytearray([0xc])
+    return send_command(serial, command, arg)
+
+
+def reqTemperatureStatus(serial):
+    command = bytearray([0x01, 0xea])
+    arg = bytearray([0xa])
+    return send_command(serial, command, arg)
+
+
+def send_command(serial, command: bytearray, args=None) -> bytearray:
+    """ Handle sending commands to camera """
+
+    assert (command != [], "Command canot be empty")
+
+    cmd = []
+
+    # Lets prepare the constant parts of a message
+    prefix = bytearray([0xff, 0x30, 0x30])
+    end = bytearray([0xef])
+
+    cmd += prefix
+    cmd += command
+
+    if args:
+        cmd += args
+
+    cmd += end
+
+    if serial:
+        serial.write(cmd)
+        response = serial.readline()
+        return response
+
+    else:
+        print(cmd)
 
 
 ############ Iris position setting (Mateusz Kojro 2021.05.19) ############################################################
