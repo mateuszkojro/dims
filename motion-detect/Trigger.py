@@ -10,18 +10,18 @@ Vec2 = namedtuple('Vec2', ['x', 'y'])
 
 Rect = namedtuple('Rect', ['min_x', 'min_y', 'max_x', 'max_y'])
 
-Trigger = namedtuple(
-    'Trigger',
-    [
-        'filename',  # Path: filename 
-        'length',  # Idk if that is neded 
-        'start_frame',  # int: First frame on which event was recorded
-        'end_frame',  # int: Last frame on which event was recorded
-        'bounding_rect',  # @Rect: bounding rectangle 
-        'section',  # int: Section of the image containing center of the event
-        'time_block' # int: In which time block event starts
-        'line_fit'  # float: How well event can be fited to the line
-    ])
+field_names = [
+    'file',  # Path: file
+    'length',  # Idk if that is neded
+    'start_frame',  # int: First frame on which event was recorded
+    'end_frame',  # int: Last frame on which event was recorded
+    'bounding_rect',  # @Rect: bounding rectangle
+    'section',  # int: Section of the image containing center of the event
+    'time_block',  # int: In which time block event starts
+    'line_fit'  # float: How well event can be fited to the line
+]
+
+Trigger = namedtuple('Trigger', field_names)
 
 
 def _assert(condition: bool, msg: str):
@@ -37,7 +37,7 @@ def _get_frames(path, start=None, stop=None) -> np.array:
     """
     Read frames from given file you can pass start and end frame
     """
-    capture = cv2.VideoCapture(path)
+    capture = cv2.VideoCapture(str(path))
 
     start = start if start is not None else 0
     stop = stop if stop is not None else capture.get(cv2.CAP_PROP_FRAME_COUNT -
@@ -46,12 +46,12 @@ def _get_frames(path, start=None, stop=None) -> np.array:
     N = stop - start + 1
 
     capture.set(cv2.CAP_PROP_POS_FRAMES, start)
-    frames = np.empty(N)
+    frames = []
 
     for i in range(N):
         status, frame = capture.read()
         _assert(status, "Error reading frame")
-        frames[i] = frame
+        frames.append(frame)
 
     return frames
 
@@ -70,12 +70,13 @@ def read_row(row, base_path="./") -> Trigger:
         max_y=row["rect_max_y"],
     )
 
-    return Trigger(filename=file,
+    return Trigger(file=file,
                    length=row["length"],
                    start_frame=row["start_frame"],
                    end_frame=row["end_frame"],
                    bounding_rect=bounding_rect,
                    section=row["section"],
+                   time_block=row["time_block"],
                    line_fit=row["line_fit"])
 
 
@@ -131,7 +132,7 @@ def section_rect(trigger: Trigger) -> Rect:
     return Rect(min_x=min_x, max_x=max_x, min_y=min_y, max_y=max_y)
 
 
-def center_rect(trigger: Trigger, size: Vec2) -> Rect:
+def center_rect(trigger: Trigger, size: Vec2, crop_method="move") -> Rect:
     """ Creates Rect with some offeset from the center """
     center = get_center(trigger)
     min_x = center.x - size.x
@@ -143,17 +144,16 @@ def center_rect(trigger: Trigger, size: Vec2) -> Rect:
 
 def get_frames(trigger: Trigger) -> np.array:
     """ Get frames from Trigger """
-    return _get_frames(trigger.filename, trigger.start_frame,
-                       trigger.end_frame)
+    return _get_frames(trigger.file, trigger.start_frame, trigger.end_frame)
 
 
-def animate(frame_list: np.array, interactive=True, filename="out.mp4"):
+def animate(frame_list: np.array, interactive=True, file="out.mp4"):
     """ Given an array of frames creates and animation """
     import matplotlib.animation as animation
     animation_frames = []  # for storing the generated images
     fig = plt.figure()
     for frame in frame_list:
-        animation_frames.append([plt.imshow(frame[0], animated=True)])
+        animation_frames.append([plt.imshow(frame, animated=True)])
 
     ani = animation.ArtistAnimation(fig,
                                     animation_frames,
@@ -166,13 +166,16 @@ def animate(frame_list: np.array, interactive=True, filename="out.mp4"):
         return HTML(ani.to_jshtml())
 
     else:
-        ani.save(filename)
+        ani.save(file)
         return None
 
 
 def mark_rect(frame: np.array, rect: Rect):
     """ Draw a rectangle on a bigger image """
-    raise NotImplementedError
+    marked_frame = frame
+    min_x, min_y, max_x, max_y = rect
+    cv2.rectangle(marked_frame, (int(min_x), int(min_y)), (int(max_x), int(max_y)), (0, 255, 0), 5)
+    return marked_frame
 
 
 def get_id(trigger: Trigger):
