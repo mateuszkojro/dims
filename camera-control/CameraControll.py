@@ -5,52 +5,63 @@ import sys
 ############ Get camera informations ############
 
 
-def reqIrisPosition(serial):
+def reqIrisPosition(serial_connection):
     command = bytearray([0x01, 0xc3])
     arg = bytearray([0x01])
-    return send_command(serial, command, arg)
+    return send_command(serial_connection, command, arg)
 
 
-def reqNDStatus(serial):
+def reqNDStatus(serial_connection):
     command = bytearray([0x01, 0xc5])
     arg = bytearray([0x0])
-    return send_command(serial, command, arg)
+    return send_command(serial_connection, command, arg)
 
 
-def reqGainStatus(serial):
-    command = bytearray([0x01, 0xc6])
-    arg = bytearray([0x0])
-    return send_command(serial, command, arg)
-
-
-def reqShutterStatus(serial):
+def reqShutterStatus(serial_connection):
     command = bytearray([0x01, 0xc6])
     arg = bytearray([0x1])
-    return send_command(serial, command, arg)
+    return send_command(serial_connection, command, arg)
 
 
-def reqFanStatus(serial):
+def reqIRStatus(serial_connection):
+    command = bytearray([0x01, 0xc5])
+    arg = bytearray([0xb])
+    return send_command(serial_connection, command, arg)
+
+def reqMenuStatus(serial_connection):
+    command = bytearray([0x01, 0xc5])
+    arg = bytearray([0x9])
+    return send_command(serial_connection, command, arg)
+
+
+def reqGainStatus(serial_connection):
+    command = bytearray([0x01, 0xc6])
+    arg = bytearray([0x0])
+    return send_command(serial_connection, command, arg)
+
+
+def reqFanStatus(serial_connection):
     command = bytearray([0x01, 0xea])
     arg = bytearray([0xa])
-    return send_command(serial, command, arg)
+    return send_command(serial_connection, command, arg)
 
 
-def reqLensStatus(serial):
+def reqLensStatus(serial_connection):
     command = bytearray([0x01, 0xea])
     arg = bytearray([0xc])
-    return send_command(serial, command, arg)
+    return send_command(serial_connection, command, arg)
 
 
-def reqTemperatureStatus(serial):
+def reqTemperatureStatus(serial_connection):
     command = bytearray([0x01, 0xea])
     arg = bytearray([0xa])
-    return send_command(serial, command, arg)
+    return send_command(serial_connection, command, arg)
 
 
-def send_command(serial, command: bytearray, args=None) -> bytearray:
+def send_command(serial_connection, command: bytearray, args=None) -> bytearray:
     """ Handle sending commands to camera """
 
-    assert (command != [], "Command canot be empty")
+    # assert (command != [], "Command canot be empty")
 
     cmd = []
 
@@ -66,9 +77,9 @@ def send_command(serial, command: bytearray, args=None) -> bytearray:
 
     cmd += end
 
-    if serial:
-        serial.write(cmd)
-        response = serial.readline()
+    if serial_connection:
+        serial_connection.write(cmd)
+        response = serial_connection.readline()
         return response
 
     else:
