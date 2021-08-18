@@ -1,6 +1,5 @@
 import time
 import csv
-# import serial
 import schedule
 import serial
 
@@ -20,7 +19,7 @@ def get_camera_status(serial_connection):
 
     status.append(get_timestamp())
     status.append(cc.reqGainStatus(serial_connection))
-    status.append(cc.reqIrisPosition(serial_connection))
+    status.append(cc. (serial_connection))
     status.append(cc.reqShutterStatus(serial_connection))
     status.append(cc.reqFanStatus(serial_connection))
     status.append(cc.reqTemperatureStatus(serial_connection))
@@ -68,7 +67,7 @@ def get_serial_connection():
                                           timeout=1)
     except Exception as e:
         print(f"Connection to serial port {SERIAL_DEVICE} "
-              "failed with: {e} running in debug mode")
+              f"failed with:\n{e}\nrunning in debug mode")
         serial_connection = None
     return serial_connection
 
