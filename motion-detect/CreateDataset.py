@@ -87,9 +87,15 @@ def analyze(path, debug=False):
                 if new_triggers is not None:
                     triggers += new_triggers
                 break
+
+        frame_time = (time.monotonic()-start_time)/frame_number
+        frame_rate = 60 / frame_time
+        info(f"Framerate {frame_rate:.2f} fps")
+
         video_capture.release()
         cv2.destroyAllWindows()
     except Exception as error:
+        raise error
         critical(f"analysys failed for file: {path} with: {error}")
         video_capture.release()
         cv2.destroyAllWindows()
@@ -98,7 +104,6 @@ def analyze(path, debug=False):
 
 
 if __name__ == '__main__':
-
 
     debug = utils.get_setting("DEBUG", False)
     threads = utils.get_setting("TH", mp.cpu_count() - 1)
@@ -119,8 +124,9 @@ if __name__ == '__main__':
     file_list = recursive_file_list(path)
 
     if debug:
+        pass
         # random.shuffle(file_list)
-        file_list = file_list[700:710]
+        # file_list = file_list[700:710]
 
     info(f"Found {len(file_list)} avi files")
 
