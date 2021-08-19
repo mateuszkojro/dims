@@ -242,8 +242,9 @@ def get_contours(frame, reference_frame):
     # on threshold image
     thresh = cv2.dilate(thresh, None, iterations=2)
 
-    contours = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
-                                cv2.CHAIN_APPROX_SIMPLE)
+    contours = cv2.findContours(
+        thresh, cv2.RETR_EXTERNAL,  # Here was tresh.copy()
+        cv2.CHAIN_APPROX_SIMPLE)
 
     contours = imutils.grab_contours(contours)
 
@@ -326,28 +327,33 @@ def is_good_trigger(event, trigger_treshold=5):
 
 def annotate_frame(frame,
                    event_list,
-                   draw_path=True,
-                   draw_box=False,
+                   draw_path=False,
+                   draw_box=True,
                    draw_confidence=True,
                    heatmap=(0, 20)):
 
-    raise Exception("That need to be fixed")
-
     for event in event_list:
-        min_x, min_y, max_x, max_y = event.path()
+        (start_x, start_y), (end_x, end_y) = event.path()
         if draw_path:
             color = heatmap_color(event.lenght(),
                                   heatmap[1]) if heatmap else (0, 255, 0)
-            cv2.line(frame, rect[0], rect[1], color, 3)
+            # cv2.line(frame,
+            #          (int(start_x), int(start_y)),
+            #          (int(end_x), int(end_y)),
+            #          end, color, 3)
 
         if draw_box:
-            (min_x, min_y), (max_x, max_y) = event.bounding_rect()
-            cv2.rectangle(frame, (min_x, min_y), (max_x, max_y), (0, 255, 0),
-                          2)
+            min_x, min_y, max_x, max_y = event.bounding_rect()
+            cv2.rectangle(frame,
+                          (int(min_x), int(min_y)),
+                          (int(max_x), int(max_y)),
+                          (0, 255, 0), 2)
 
         if draw_confidence:
-            cv2.putText(frame, f"{event.lenght():1f}q", rect[0],
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.35, (100, 0, 0), 1)
+            pass
+            # cv2.putText(frame, f"{event.lenght():1f}q",
+            #             (int(start_x), int(start_y)),
+            #             cv2.FONT_HERSHEY_SIMPLEX, 0.35, (100, 0, 0), 1)
 
 
 @cython.boundscheck(False)
@@ -387,22 +393,6 @@ def show_trigger(trigger, size=(1920 // 120, 1080 // 120)):
     plt.show()
     # return plt
     # return result
-
-
-# # TODO: Test that to be sure
-# def show_raw(filename,
-#              start_frame,
-#              end_frame,
-#              rect_start,
-#              rect_stop,
-#              size=(1920 // 120, 1080 // 120)):
-#     # plt.Figure(figsize=size)
-#     frames = get_frames(filename, start_frame, end_frame)
-#     result = combine_frames(frames)
-#     cv2.rectangle(result, rect_stop, rect_start, (255, 0, 0), 2)
-#     # plt.imshow(result)
-#     # plt.show()
-#     return result
 
 
 class Analyzer:
