@@ -29,7 +29,7 @@ def _assert(condition: bool, msg: str):
     Assertion that survives cython compilation
     """
     if not condition:
-        print("Assertion failed: ")
+        print("Assertion failed: \n")
         raise Exception(msg)
 
 
@@ -100,7 +100,7 @@ def combine_frames(frame_list: np.array):
 
 def cut_rect_from_frame(frame: np.array, r: Rect) -> np.array:
     """ Cuts out the rect from given frame """
-    return frame[r.min_y:r.max_y + 1, r.min_x:r.max_x + 1]
+    return frame[int(r.min_y):int(r.max_y + 1), int(r.min_x):int(r.max_x + 1)]
 
 
 def get_center(trigger: Trigger):
@@ -170,11 +170,11 @@ def animate(frame_list: np.array, interactive=True, file="out.mp4"):
         return None
 
 
-def mark_rect(frame: np.array, rect: Rect):
+def mark_rect(frame: np.array, rect: Rect, color=(0, 255, 0), thickness=2):
     """ Draw a rectangle on a bigger image """
     marked_frame = frame
     min_x, min_y, max_x, max_y = rect
-    cv2.rectangle(marked_frame, (int(min_x), int(min_y)), (int(max_x), int(max_y)), (0, 255, 0), 5)
+    cv2.rectangle(marked_frame, (int(min_x), int(min_y)), (int(max_x), int(max_y)), color, thickness)
     return marked_frame
 
 

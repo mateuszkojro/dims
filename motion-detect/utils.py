@@ -9,6 +9,8 @@ from log import *
 
 from collections import namedtuple
 
+from Trigger import Trigger
+
 # @cython.cclass
 # class Vec2:
 #     x = cython.declare(cython.int, visibility='public')
@@ -29,6 +31,10 @@ Rect = namedtuple('Rect', ['min_x', 'min_y', 'max_x', 'max_y'])
 
 
 def combine_frames(frame_list):
+    """ 
+    Get the arr of frames and combine them into one (by getting max pixel value) 
+    """
+
     if len(frame_list) > 50:
         print("ERR: to many frames")
         frame_list = frame_list[:50]
@@ -99,6 +105,7 @@ def save(all_triggers, out_name="out"):
     np.save(out_name + ".npy", numpy_array, allow_pickle=True)
 
     rows = []
+    common_rows = []
 
     for clip in all_triggers:
         for trigger in clip:

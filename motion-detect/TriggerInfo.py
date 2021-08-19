@@ -4,59 +4,13 @@ import matplotlib.pyplot as plt
 import cv2
 from typing import Tuple
 
+import skimage.measure
+
 from utils import Vec2, get_frames, combine_frames, resize_frame
+
+from Trigger import Trigger, get_section
+
 from log import err
-
-from collections import namedtuple
-
-Trigger = namedtuple('Trigger', [
-    'filename', 'length', 'start_frame', 'end_frame', 'bounding_rect',
-    'section', 'line_fit'
-])
-
-
-def get_center(trigger: Trigger):
-    """ Calculate center of a @Trigger """
-    min_x, min_y, max_x, max_y = trigger.bounding_rect
-    x = min_x + abs(max_x - min_x) / 2
-    y = min_y + abs(max_y - min_y) / 2
-
-    return Vec2(x, y)
-
-
-def get_section(trigger: Trigger):
-    """ Calculate number of a section containing center of the @Trigger """
-    x, y = get_center(trigger)
-
-    x = x // 120
-    y = y // 120
-
-    return int(y * (1920 // 120)) + int(x)
-
-
-def get_uid(trigger: Trigger):
-    pass
-
-
-def cut_section(trigger: Trigger):
-    """Cut section of a frame where trigger was detected"""
-    pass
-
-
-def animate(trigger: Trigger):
-    pass
-
-
-def show(trigger: Trigger):
-    pass
-
-
-def show_section(trigger: Trigger):
-    pass
-
-
-def animate(trigger: Trigger):
-    pass
 
 
 # @dataclass(frozen=True)
@@ -111,6 +65,10 @@ class TriggerInfo:
         return f"{filename}_{self.get_section()}_{self.start_frame}_{self.end_frame}"
 
     def section_cutout(self):
+        """ 
+        Go through all frames on which event was detected than cutout the section of the image 
+        """
+
         frames = get_frames(self.filename, self.start_frame, self.end_frame)
         section = self.get_section()
         min_x = (((section % (1920 // 120))) * 120) - 1
@@ -121,8 +79,14 @@ class TriggerInfo:
         frames = [[frame[min_y:max_y, min_x:max_x]] for frame in frames]
         return frames
 
-    def region(self):
-        raise Exception("Not implemented")
+    def center_rect(self):
+        pass
+
+    def region_props(self):
+        frames = self.section_cutout()
+        frames = combine_frames(frames)
+        props = skimage.measure.regionprops(frames)
+        return props
 
     def animate(self):
         import matplotlib.animation as animation
@@ -149,15 +113,18 @@ class TriggerInfo:
         frames = []
         capture = cv2.VideoCapture(self.filename)
         capture.set(cv2.CAP_PROP_POS_FRAMES, self.start_frame)
-        for i in range(self.end_frame - self.start_frame):
+        for _ in range(self.end_frame - self.start_frame):
             status, frame = capture.read()
+            if not status:
+                raise Exception("Cv read frame failed")
+
             frames.append(frame)
 
         combined = self.combine_frames(frames)
 
         raise Exception("Onl partialy implemented")
 
-    def get_frame_chunk(self):
+    def  get_frame_chunk(self):
         raise Exception("Not implemented")
 
     @staticmethod
@@ -171,20 +138,6 @@ class TriggerInfo:
                            event_count=row[8],
                            line_fit=[0],
                            event=None)
-
-    @staticmethod
-    def combine_frames(frames):
-        if len(frames) == 0:
-            return None
-
-        # print(f"{np.ndim(frames)}")
-        if len(frames) > 50:
-            err("to many frames")
-
-            frames = frames[:50]
-        result = np.amax(frames, axis=1)
-
-        return result
 
     def show(self) -> None:
         frames = []
@@ -210,3 +163,17 @@ class TriggerInfo:
 
         plt.imshow(frame)
         plt.show()
+
+
+    def to_common_trigger(self):
+
+        return Trigger(
+            filename=self.filename,
+            start_frame=self.start_frame,
+            end_frame=self.end_frame,
+            bounding_rect=self.bounding_box,
+            section=self.get_section(),
+            line_fit=self.line_fit,
+            length=None,
+            time_block=self.start_frame % 10
+        )
