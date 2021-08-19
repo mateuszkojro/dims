@@ -2,7 +2,7 @@
 import time
 import sys
 
-############ Get camera informations ############
+""" Get camera informations """
 
 
 def reqIrisPosition(serial_connection):
@@ -27,6 +27,7 @@ def reqIRStatus(serial_connection):
     command = bytearray([0x01, 0xc5])
     arg = bytearray([0xb])
     return send_command(serial_connection, command, arg)
+
 
 def reqMenuStatus(serial_connection):
     command = bytearray([0x01, 0xc5])

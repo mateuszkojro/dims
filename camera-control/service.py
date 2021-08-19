@@ -1,7 +1,8 @@
 import time
 import csv
-import schedule
 import serial
+
+import schedule
 
 import CameraControll as cc
 
@@ -19,7 +20,7 @@ def get_camera_status(serial_connection):
 
     status.append(get_timestamp())
     status.append(cc.reqGainStatus(serial_connection))
-    status.append(cc. (serial_connection))
+    status.append(cc.reqIrisPosition(serial_connection))
     status.append(cc.reqShutterStatus(serial_connection))
     status.append(cc.reqFanStatus(serial_connection))
     status.append(cc.reqTemperatureStatus(serial_connection))
