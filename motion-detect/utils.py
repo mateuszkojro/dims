@@ -117,6 +117,20 @@ def save(all_triggers, out_name="out"):
                 trigger.get_section(), trigger.line_fit
             ])
 
+            common_rows.append([
+                trigger.filename,  # 
+                trigger.length,  #
+                trigger.start_frame,  #
+                trigger.end_frame,  #
+                min_x,
+                min_y,  # 
+                max_x,
+                max_y,  #
+                trigger.get_section(),  #
+                trigger.start_frame % 10,  #
+                trigger.line_fit  #
+            ])
+
     df = pd.DataFrame(data=rows,
                       columns=[
                           "file", "start_frame", "end_frame", "box_min_x",
@@ -124,4 +138,21 @@ def save(all_triggers, out_name="out"):
                           "count", "section", "line_fir"
                       ])
 
+    common_df = pd.DataFrame(
+        data=common_rows,
+        columns=[
+            'file   ',  # Path: filename 
+            'length',  # Idk if that is neded 
+            'start_frame',  # int: First frame on which event was recorded
+            'end_frame',  # int: Last frame on which event was recorded
+            "rect_min_x",
+            "rect_min_y",
+            "rect_max_x",
+            "rect_max_y",  # @Rect: bounding rectangle 
+            'section',  # int: Section of the image containing center of the event
+            'time_block',  # int: In which time block event starts
+            'line_fit'  # float: How well event can be fited to the line
+        ])
+
+    common_df.to_csv("test.csv")
     df.to_csv(out_name + ".csv")
