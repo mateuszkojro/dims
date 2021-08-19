@@ -86,9 +86,11 @@ def draw_grid(frame, res=Vec2(16, 9)):
     w = frame.shape[1]
 
     for x in range(16):
-        cv2.line(frame, (x * w / res.x, 0), (x * w / res.x, h), (0, 0, 100), 1)
+        cv2.line(frame, (x * w // int(res.x), 0),
+                 (x * w // int(res.x), h), (0, 0, 100), 1)
     for y in range(9):
-        cv2.line(frame, (0, y * h / res.y), (w, y * h / res.y), (0, 0, 100), 1)
+        cv2.line(frame, (0, y * h // int(res.y)),
+                 (w, y * h // int(res.y)), (0, 0, 100), 1)
 
 
 def get_setting(setting, default, var_type=int):
