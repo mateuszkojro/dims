@@ -34,3 +34,15 @@ def remove_bg(frame, deviation=2, div_sqr=(50, 50)):
                                  dtype=int).reshape(part.shape)
 
     return parts.reshape((h_original, w_original))
+
+
+def apply_median_filtter(frame, kernel_size=3):
+    """
+    Applays a median filter on given frame
+
+    :param      frame:        The frame
+    :param      kernel_size:  The kernel size
+
+    :returns:   Filtered frame
+    """
+    return cv2.medianBlur(frame, 3)
