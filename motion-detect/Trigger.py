@@ -92,8 +92,9 @@ def read_df(df: pd.DataFrame, base_path="./") -> np.array:
 
 
 def combine_frames(frame_list: np.array):
-    """ 
-    Get the arr of frames and combine them into one (by getting max pixel value) 
+    """
+    Get the arr of frames and combine them into one
+    (by getting max pixel value)
     """
     return np.amax(frame_list, axis=0)
 
@@ -136,9 +137,9 @@ def center_rect(trigger: Trigger, size: Vec2, crop_method="move") -> Rect:
     """ Creates Rect with some offeset from the center """
     center = get_center(trigger)
     min_x = center.x - size.x
-    max_x = center.x + size.x
+    max_x = center.x + size.x - 1
     min_y = center.y - size.y
-    max_y = center.y + size.y
+    max_y = center.y + size.y - 1
     return Rect(min_x=min_x, max_x=max_x, min_y=min_y, max_y=max_y)
 
 
@@ -147,11 +148,12 @@ def get_frames(trigger: Trigger) -> np.array:
     return _get_frames(trigger.file, trigger.start_frame, trigger.end_frame)
 
 
-def animate(frame_list: np.array, interactive=True, file="out.mp4"):
+def animate(frame_list: np.array, interactive=True, file="out.mp4", size=None):
     """ Given an array of frames creates and animation """
     import matplotlib.animation as animation
     animation_frames = []  # for storing the generated images
-    fig = plt.figure()
+
+    fig = plt.figure(figsize=size)
     for frame in frame_list:
         animation_frames.append([plt.imshow(frame, animated=True)])
 
@@ -174,7 +176,8 @@ def mark_rect(frame: np.array, rect: Rect, color=(0, 255, 0), thickness=2):
     """ Draw a rectangle on a bigger image """
     marked_frame = frame
     min_x, min_y, max_x, max_y = rect
-    cv2.rectangle(marked_frame, (int(min_x), int(min_y)), (int(max_x), int(max_y)), color, thickness)
+    cv2.rectangle(marked_frame, (int(min_x), int(min_y)),
+                  (int(max_x), int(max_y)), color, thickness)
     return marked_frame
 
 
