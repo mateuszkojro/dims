@@ -8,10 +8,10 @@ compile:
 	$(PYTHON) $(SETUP) build_ext --inplace
 
 debug:compile
-	DEBUG=1 $(TIME) $(PYTHON) $(MAIN_FILE)
+	DEBUG=1 $(TIME) $(PYTHON) $(MAIN_FILE) $(FILE)
 	
 run:compile
-	$(TIME) $(PYTHON) $(MAIN_FILE)
+	$(TIME) $(PYTHON) $(MAIN_FILE) $(FILE)
 
 html:
 	jupyter nbconvert --execute $(FILE) --to html
