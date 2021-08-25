@@ -13,3 +13,8 @@ debug:compile
 run:compile
 	$(TIME) $(PYTHON) $(MAIN_FILE)
 
+html:
+	jupyter nbconvert --execute $(FILE) --to html
+
+pdf:
+	jupyter nbconvert --execute $(FILE) --to pdf
