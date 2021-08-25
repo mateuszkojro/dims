@@ -11,28 +11,15 @@ from collections import namedtuple
 
 from Trigger import Trigger
 
-# @cython.cclass
-# class Vec2:
-#     x = cython.declare(cython.int, visibility='public')
-#     y = cython.declare(cython.int, visibility='public')
-
-#     def __init__(self, x, y):
-#         self.x: cython.int = x
-#         self.y: cython.int = y
-
-#     @cache
-#     def tuple(self) -> Tuple[int, int]:
-#         # return astuple(self)
-#         return self.x, self.y
-
 Vec2 = namedtuple('Vec2', ['x', 'y'])
 
 Rect = namedtuple('Rect', ['min_x', 'min_y', 'max_x', 'max_y'])
 
 
 def combine_frames(frame_list):
-    """ 
-    Get the arr of frames and combine them into one (by getting max pixel value) 
+    """
+    Get the arr of frames and combine them into one
+    (by getting max pixel value)
     """
 
     if len(frame_list) > 50:
@@ -120,12 +107,12 @@ def save(all_triggers, out_name="out"):
             ])
 
             common_rows.append([
-                trigger.filename,  # 
+                trigger.filename,  #
                 trigger.length,  #
                 trigger.start_frame,  #
                 trigger.end_frame,  #
                 min_x,
-                min_y,  # 
+                min_y,  #
                 max_x,
                 max_y,  #
                 trigger.get_section(),  #
@@ -143,14 +130,14 @@ def save(all_triggers, out_name="out"):
     common_df = pd.DataFrame(
         data=common_rows,
         columns=[
-            'file   ',  # Path: filename 
-            'length',  # Idk if that is neded 
+            'file   ',  # Path: filename
+            'length',  # Idk if that is neded
             'start_frame',  # int: First frame on which event was recorded
             'end_frame',  # int: Last frame on which event was recorded
             "rect_min_x",
             "rect_min_y",
             "rect_max_x",
-            "rect_max_y",  # @Rect: bounding rectangle 
+            "rect_max_y",  # @Rect: bounding rectangle
             'section',  # int: Section of the image containing center of the event
             'time_block',  # int: In which time block event starts
             'line_fit'  # float: How well event can be fited to the line
