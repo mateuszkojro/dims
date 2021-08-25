@@ -6,10 +6,22 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import cv2
 
+
+"""
+Object representing a 2 dimentional vector
+"""
 Vec2 = namedtuple('Vec2', ['x', 'y'])
 
+
+"""
+Object repersenting Rectangle
+"""
 Rect = namedtuple('Rect', ['min_x', 'min_y', 'max_x', 'max_y'])
 
+
+"""
+Names used to extract information from csv to Trigger object
+"""
 field_names = [
     'file',  # Path: file
     'length',  # Idk if that is neded
@@ -21,6 +33,9 @@ field_names = [
     'line_fit'  # float: How well event can be fited to the line
 ]
 
+"""
+Common interface object for a trigger
+"""
 Trigger = namedtuple('Trigger', field_names)
 
 
