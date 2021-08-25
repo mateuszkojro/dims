@@ -65,7 +65,7 @@ class EventInfo:
         return False
 
 
-class Event:
+class Cluster:
     """ Class containing a cluster of events """
     positions: List[EventInfo]
     last_changed: cython.int = 0
@@ -214,7 +214,7 @@ def heatmap_color(val, max_val) -> Tuple[int]:
     return blue * 255, green * 255, red * 255
 
 
-def save_event(event: Event) -> TriggerInfo:
+def save_event(event: Cluster) -> TriggerInfo:
     return TriggerInfo(filename=event.filename,
                        length=event.lenght(),
                        start_frame=event.first_point,
@@ -274,7 +274,7 @@ def extract_events(contours,
             if event.add_if_similar(new_event):
                 was_added = True
         if not was_added:
-            event_list.append(Event(new_event, filename=filename))
+            event_list.append(Cluster(new_event, filename=filename))
 
 
 @cython.boundscheck(False)
