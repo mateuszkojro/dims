@@ -87,7 +87,29 @@ def send_command(serial_connection, command: bytearray, args=None) -> bytearray:
         print(cmd)
 
 
+def setMode(serial, value):
+    mode = {
+        "AUTO": '0',
+        "MANUAL": '1',
+        "AGC": '2',
+        "AV": '3',
+        "TV": '4'
+    }
+
+    command = bytearray([0x18, 0x4])
+
+    try:
+        arg = mode[value]
+    except KeyError:
+        print(f"Bad iris position value: {value}")
+        exit(1)
+
+    print("Result: ", send_command(serial, command, arg))
+
+
 ############ Iris position setting (Mateusz Kojro 2021.05.19) ############################################################
+
+
 def setAdvancedIrisPosition(serial, value):
     iris = {
         1.0: [ord('F'), ord('F')],
@@ -124,7 +146,7 @@ def setAdvancedIrisPosition(serial, value):
         print(cmd)
 
 
-########## Turn on and off the settings menu (Mateusz Kojro 2021/06/18)
+# Turn on and off the settings menu (Mateusz Kojro 2021/06/18)
 
 
 def setMenu(serial, value):
@@ -147,7 +169,7 @@ def setMenu(serial, value):
         print(cmd)
 
 
-########## Click a button in the menu (Mateusz Kojro 2021/06/18)
+# Click a button in the menu (Mateusz Kojro 2021/06/18)
 
 
 def menuPressButton(serial, value):
