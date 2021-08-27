@@ -12,7 +12,7 @@ SERIAL_DEVICE = 'COM9'
 
 
 def get_timestamp():
-    return time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
+    return time.strftime("%Y-%m-%d_%H_%M_%S", time.localtime())
 
 
 def get_camera_status(serial_connection):
@@ -57,6 +57,10 @@ def get_ufo_captrue_status():
         print('There are several UFOCapture windows')
 
 
+def decode_response(response):
+    pass
+
+
 def get_serial_connection():
     #_devName = '/dev/tty.usbserial-FTS4PT0F'
     try:
@@ -78,7 +82,8 @@ def save_log():
     serial_connecton = get_serial_connection()
     data_point = get_camera_status(serial_connecton)
 
-    if serial_connecton: serial_connecton.close()
+    if serial_connecton:
+        serial_connecton.close()
 
     print(f"Saving current status: {data_point}")
 
@@ -100,6 +105,8 @@ if __name__ == '__main__':
         outputfile.write(
             "Timestamp, Gain, Iris position, Shutter, Fan status, Temperature\n"
         )
+
+    save_log()
 
     schedule.every(0.5).minutes.do(save_log)
 
