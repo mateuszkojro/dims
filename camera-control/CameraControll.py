@@ -7,7 +7,7 @@ import sys
 
 def reqIrisPosition(serial_connection):
     command = bytearray([0x01, 0xc3])
-    arg = bytearray([0x01])
+    arg = bytearray([0x02])
     return send_command(serial_connection, command, arg)
 
 
