@@ -155,7 +155,22 @@ def center_rect(trigger: Trigger, size: Vec2, crop_method="move") -> Rect:
     max_x = center.x + size.x - 1
     min_y = center.y - size.y
     max_y = center.y + size.y - 1
-    return Rect(min_x=min_x, max_x=max_x, min_y=min_y, max_y=max_y)
+
+    if min_x < 0:
+        min_x = 0
+
+    if min_y < 0:
+        min_y = 0
+
+    if max_x > 1919:
+        max_x = 1919
+
+    if max_y > 1079:
+        max_y = 1079
+
+    rect = Rect(min_x=min_x, max_x=max_x, min_y=min_y, max_y=max_y)
+
+    return rect
 
 
 def get_frames(trigger: Trigger) -> np.array:
