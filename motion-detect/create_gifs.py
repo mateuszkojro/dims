@@ -6,10 +6,15 @@ Creatre gifs from triggers
 import numpy as np
 import pandas as pd
 import multiprocessing as mp
+import hashlib
 import sys
+
+import base64
 
 import log
 from Trigger import *
+
+h = hashlib.new('md5')
 
 
 def gen_gif(trigger, out_filename, size=None):
@@ -23,8 +28,16 @@ def gen_gif(trigger, out_filename, size=None):
 
 def aplyer(trigger):
     log.info(str(trigger.file))
-    out_filename = output_folder + '/' + get_id(trigger)
+
+    t_id = get_id(trigger)
+    h.update(t_id.encode('ascii'))
+    code = h.hexdigest()
+
+    out_filename = output_folder + "/" + str(code)
+
     gen_gif(trigger, out_filename + ".gif")
+    with open(out_filename + ".txt", "w+") as f:
+        f.write(t_id)
 
 
 if __name__ == '__main__':
