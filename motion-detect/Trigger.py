@@ -1,5 +1,6 @@
 from collections import namedtuple
 import pathlib
+import cython
 
 import numpy as np
 import pandas as pd
@@ -48,6 +49,8 @@ def _assert(condition: bool, msg: str):
         raise Exception(msg)
 
 
+@cython.wraparound(False)
+@cython.boundscheck(False)
 def _get_frames(path, start=None, stop=None) -> np.array:
     """
     Read frames from given file you can pass start and end frame
@@ -71,6 +74,8 @@ def _get_frames(path, start=None, stop=None) -> np.array:
     return frames
 
 
+@cython.wraparound(False)
+@cython.boundscheck(False)
 def read_row(row, base_path="./") -> Trigger:
     """ Convert row of a df to Trigger obj """
     # FIXME: Path conversion
@@ -95,6 +100,8 @@ def read_row(row, base_path="./") -> Trigger:
                    line_fit=row["line_fit"])
 
 
+@cython.wraparound(False)
+@cython.boundscheck(False)
 def read_df(df: pd.DataFrame, base_path="./") -> np.array:
     """ Convert df int numpy arry containing @Triggers """
     N = df.shape[0]
@@ -114,6 +121,8 @@ def combine_frames(frame_list: np.array):
     return np.amax(frame_list, axis=0)
 
 
+@cython.wraparound(False)
+@cython.boundscheck(False)
 def cut_rect_from_frame(frame: np.array, r: Rect) -> np.array:
     """ Cuts out the rect from given frame """
     return frame[int(r.min_y):int(r.max_y + 1), int(r.min_x):int(r.max_x + 1)]
@@ -178,6 +187,8 @@ def get_frames(trigger: Trigger) -> np.array:
     return _get_frames(trigger.file, trigger.start_frame, trigger.end_frame)
 
 
+@cython.wraparound(False)
+@cython.boundscheck(False)
 def animate(frame_list: np.array, interactive=True, file="out.mp4", size=None):
     """ Given an array of frames creates and animation """
     import matplotlib.animation as animation
@@ -213,4 +224,5 @@ def mark_rect(frame: np.array, rect: Rect, color=(0, 255, 0), thickness=2):
 
 def get_id(trigger: Trigger):
     """ Unique id of an event """
-    raise NotImplementedError
+    return str(trigger.file).replace('/', '_') + '_' + \
+        str(trigger.section) + '_' + str(trigger.time_block)

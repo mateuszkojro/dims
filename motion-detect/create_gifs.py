@@ -23,8 +23,7 @@ def gen_gif(trigger, out_filename, size=None):
 
 def aplyer(trigger):
     log.info(str(trigger.file))
-    out_filename = output_folder + '/' + \
-        str(trigger.file).replace('/', '_')
+    out_filename = output_folder + '/' + get_id(trigger)
     gen_gif(trigger, out_filename + ".gif")
 
 
@@ -35,5 +34,5 @@ if __name__ == '__main__':
     df = pd.read_csv(dataset_file)
     triggers = read_df(df)
 
-    with mp.Pool(16) as p:
+    with mp.Pool(32) as p:
         p.map(aplyer, triggers)
