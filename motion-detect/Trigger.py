@@ -220,6 +220,9 @@ def animate(frame_list: np.array, interactive=True, file="out.mp4", size=None):
 
     else:
         ani.save(file)
+        plt.close()
+        del fig
+        del ani
         return None
 
 
