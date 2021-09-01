@@ -33,13 +33,19 @@ def gen_gif(trigger, out_filename, size=None):
 
 
 def aplyer(trigger):
-    log.info(str(trigger.file))
 
     t_id = get_id(trigger)
-    h.update(t_id.encode('ascii'))
-    code = h.hexdigest()
+    # h.update(t_id.encode('ascii'))
+    # code = h.hexdigest()
+    code = t_id
 
     out_filename = output_folder + "/" + str(code)
+
+    if os.path.isfile(out_filename + ".gif") and os.path.isfile(out_filename + ".npy"):
+        log.err("skiping" + code)
+        return
+
+    log.info(str(trigger.file))
 
     gen_gif(trigger, out_filename + ".gif")
 
