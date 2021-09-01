@@ -253,6 +253,6 @@ def mark_rect(frame: np.array, rect: Rect, color=(0, 255, 0), thickness=2):
 
 def get_id(trigger: Trigger):
     """ Unique id of an event """
-    return f"{trigger}"
+    return f"{trigger.file.name}_{trigger.section}_{trigger.start_frame}_{trigger.end_frame}"
     # return str(trigger.file).replace('/', '_') + '_' + \
     #     str(trigger.section) + '_' + str(trigger.time_block)
