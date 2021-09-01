@@ -204,7 +204,9 @@ def decode_response(response, seting: Setting):
 
     # FIXME: remove preficx and postifx
     print(f"Pre parsed respone: {response}")
-    parsed_response = response
+
+    # Ignoring all the other information
+    parsed_response = response[3:-1]
 
     if seting == Setting.GAIN:
         return decode_gain(parsed_response)
