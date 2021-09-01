@@ -21,3 +21,6 @@ html:
 pdf:
 	jupyter nbconvert --execute $(FILE) --to pdf
 
+gif:
+	python create_gifs.py $(FILE) $(OUT)
+	# python collect.py $(OUT)

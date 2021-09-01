@@ -8,11 +8,17 @@ import pandas as pd
 import multiprocessing as mp
 import hashlib
 import sys
+import os
 
 import base64
 
 import log
 from Trigger import *
+
+import FileCrawler
+import os
+import numpy as np
+import sys
 
 h = hashlib.new('md5')
 
@@ -36,8 +42,10 @@ def aplyer(trigger):
     out_filename = output_folder + "/" + str(code)
 
     gen_gif(trigger, out_filename + ".gif")
-    with open(out_filename + ".txt", "w+") as f:
-        f.write(t_id)
+
+    np.save(out_filename + ".npy", np.array(trigger))
+    # with open(out_filename + ".txt", "w+") as f:
+    #     f.write(t_id)
 
 
 if __name__ == '__main__':

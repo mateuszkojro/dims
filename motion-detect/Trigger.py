@@ -5,6 +5,7 @@ import cython
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import cv2
 
 
@@ -84,24 +85,32 @@ def read_row(row, base_path="./") -> Trigger:
     # file = base_path / file
 
     bounding_rect = Rect(
-        min_x=row["rect_min_x"],
-        min_y=row["rect_min_y"],
-        max_x=row["rect_max_x"],
-        max_y=row["rect_max_y"],
+        min_x=row.get("rect_min_x"),
+        min_y=row.get("rect_min_y"),
+        max_x=row.get("rect_max_x"),
+        max_y=row.get("rect_max_y"),
     )
 
+    if bounding_rect.min_x is None:
+        bounding_rect = Rect(
+            min_x=row.get("box_up_left_x"),
+            max_y=row.get("box_up_left_y"),
+            max_x=row.get("box_down_right_x"),
+            min_y=row.get("box_down_right_y")
+        )
+
     return Trigger(file=file,
-                   length=row["length"],
-                   start_frame=row["start_frame"],
-                   end_frame=row["end_frame"],
+                   length=row.get("length"),
+                   start_frame=row.get("start_frame"),
+                   end_frame=row.get("end_frame"),
                    bounding_rect=bounding_rect,
-                   section=row["section"],
-                   time_block=row["time_block"],
-                   line_fit=row["line_fit"])
+                   section=row.get("section"),
+                   time_block=row.get("time_block"),
+                   line_fit=row.get("line_fit"))
 
 
-@cython.wraparound(False)
-@cython.boundscheck(False)
+@ cython.wraparound(False)
+@ cython.boundscheck(False)
 def read_df(df: pd.DataFrame, base_path="./") -> np.array:
     """ Convert df int numpy arry containing @Triggers """
     N = df.shape[0]
@@ -121,8 +130,8 @@ def combine_frames(frame_list: np.array):
     return np.amax(frame_list, axis=0)
 
 
-@cython.wraparound(False)
-@cython.boundscheck(False)
+@ cython.wraparound(False)
+@ cython.boundscheck(False)
 def cut_rect_from_frame(frame: np.array, r: Rect) -> np.array:
     """ Cuts out the rect from given frame """
     return frame[int(r.min_y):int(r.max_y + 1), int(r.min_x):int(r.max_x + 1)]
@@ -187,16 +196,17 @@ def get_frames(trigger: Trigger) -> np.array:
     return _get_frames(trigger.file, trigger.start_frame, trigger.end_frame)
 
 
-@cython.wraparound(False)
-@cython.boundscheck(False)
+@ cython.wraparound(False)
+@ cython.boundscheck(False)
 def animate(frame_list: np.array, interactive=True, file="out.mp4", size=None):
     """ Given an array of frames creates and animation """
-    import matplotlib.animation as animation
-    animation_frames = []  # for storing the generated images
 
     fig = plt.figure(figsize=size)
-    for frame in frame_list:
-        animation_frames.append([plt.imshow(frame, animated=True)])
+    # for storing the generated images
+    N = len(frame_list)
+    animation_frames = np.arange(N, dtype=object)
+    for i in range(N):
+        animation_frames[i] = [plt.imshow(frame_list[i], animated=True)]
 
     ani = animation.ArtistAnimation(fig,
                                     animation_frames,
