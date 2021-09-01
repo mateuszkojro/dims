@@ -7,7 +7,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import cv2
-
+import os
 
 """
 Object representing a 2 dimentional vector
@@ -62,7 +62,7 @@ def _get_frames(path, start=None, stop=None) -> np.array:
     stop = stop if stop is not None else capture.get(cv2.CAP_PROP_FRAME_COUNT -
                                                      1)
 
-    N = stop - start + 1
+    N = int(stop) - int(start) + 1
 
     capture.set(cv2.CAP_PROP_POS_FRAMES, start)
     frames = []
@@ -81,8 +81,15 @@ def read_row(row, base_path="./") -> Trigger:
     """ Convert row of a df to Trigger obj """
     # FIXME: Path conversion
     base_path = pathlib.Path(base_path)
-    file = pathlib.Path(row["file"])
-    # file = base_path / file
+
+    file = row.get("file")
+
+    # if diffrent format backtrack
+    if file is None:
+        file = pathlib.Path(row.get("common_pathname"))
+        file = base_path / file
+
+    file = pathlib.Path(file)
 
     bounding_rect = Rect(
         min_x=row.get("rect_min_x"),
@@ -99,6 +106,14 @@ def read_row(row, base_path="./") -> Trigger:
             min_y=row.get("box_down_right_y")
         )
 
+    if bounding_rect.min_x is None:
+        bounding_rect = Rect(
+            min_x=row.get("box_min_x"),
+            max_y=row.get("box_max_y"),
+            max_x=row.get("box_max_x"),
+            min_y=row.get("box_min_y")
+        )
+
     return Trigger(file=file,
                    length=row.get("length"),
                    start_frame=row.get("start_frame"),
@@ -113,6 +128,7 @@ def read_row(row, base_path="./") -> Trigger:
 @ cython.boundscheck(False)
 def read_df(df: pd.DataFrame, base_path="./") -> np.array:
     """ Convert df int numpy arry containing @Triggers """
+    base_path = pathlib.Path(base_path)
     N = df.shape[0]
     all_triggers = np.empty(N, dtype=object)
 
