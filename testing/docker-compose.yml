@@ -1,0 +1,63 @@
+version: "3.0"
+   
+services:
+  db:
+    image: postgres
+    ports:
+      - 5432:5432
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=dims_events
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=pssd123
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 9080:8080
+    depends_on:
+      - db
+  
+  grafana:
+    image: grafana/grafana:8.1.2-ubuntu
+    # ports:
+    #   # HOST:CONTANER
+    #   - 3000:3000
+    volumes: 
+      - ./data/grafana:/var/lib/grafana
+      - ./data/grafana/grafana.ini:/etc/grafana/grafana.ini
+    environment: 
+      - GF_INSTALL_IMAGE_RENDERER_PLUGIN=true 
+    depends_on: 
+      - db
+    user: '0'
+  
+  label:
+    image: heartexlabs/label-studio:latest
+    environment: 
+      - DATA_DIR=/label-studio/data
+      - LOCAL_FILES_SERVING_ENABLED=1
+      - LABEL_STUDIO_HOST=http://localhost/label
+      - LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=/data/gifs
+    # ports: 
+    #   - 8080:8080
+    volumes:
+      - ./data/label-studio:/label-studio/data
+      - ./data/gifs:/data/gifs
+    depends_on:
+      - db
+    
+  proxy:
+    image: nginx
+    volumes: 
+      - ./data/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./data/static:/usr/share/nginx/www
+    ports: 
+      - 80:80
+    depends_on: 
+      - db
+      - adminer
+      - label
+      - grafana
