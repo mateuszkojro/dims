@@ -2,6 +2,7 @@ import pathlib
 from collections import namedtuple
 
 import cv2
+import sys
 import cython
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
@@ -252,7 +253,11 @@ def get_frames(trigger: Trigger) -> np.array:
 @cython.wraparound(False)
 @cython.boundscheck(False)
 def animate(frame_list: np.array, interactive=True, file="out.mp4", size=None):
-    """ Given an array of frames creates and animation """
+    """
+    Given an array of frames creates and animation
+    TODO: make it faster with:
+    https://github.com/vrabelmichal/dims_experimentation/blob/207f37ef4d41dbae366570a9a58ae58ce724f3af/visualization.py#L95-L142
+    """
 
     fig = plt.figure(figsize=size)
     # for storing the generated images
@@ -296,8 +301,20 @@ def get_id(trigger: Trigger):
 
 
 class SqlConnection:
-    def __init__(self, params) -> None:
-        self.connection = pg.connect(params)
+    def __init__(self, **params) -> None:
+        if params is not None:
+            self.connection = pg.connect(params)
+        else:
+            self.connection = pg.connect(host="localhost",
+                                         database="dims_events",
+                                         user="admin",
+                                         password="pssd123")
+
+    def get_cusrosr(self):
+        return self.connection.cursor()
+
+    def commit(self):
+        self.connection.commit()
 
     def select(self, collumns, table, where=True):
         """ Create select query on connection """
@@ -337,3 +354,86 @@ class SqlConnection:
 
     def __del__(self):
         self.connection.close()
+
+
+def spllit_stringify_dict(dict, spliiter=','):
+    keys, values = "", ""
+    for key, value in dict.items():
+        keys += spliiter + key
+        values += spliiter + value
+    return keys, values
+
+
+class DataCollection:
+    def __init__(self, name, parameters, additional_trigger_info) -> None:
+        self.sql_connection = SqlConnection
+
+        INSERT_SQL = """ INSERT INTO 
+                            data_collections(name, timestamp) 
+                        VALUES(%s, clock_timestamp()) RETURNING id
+                    """
+
+        CREATE_PROPS_TABLE = f"""
+                            CREATE TABLE {trigger_props_table_name}
+                            ({trigger_field_type_pairs})
+                            """
+
+        CREATE_PROPS_TABLE = f"""
+                            CREATE TABLE {method_props_table_name}
+                            ({method_field_type_pairs})
+                            """
+
+        INSERT_DATA_COLLECTION_PROPS = f""""""
+
+        # create a cursor
+        cur = self.sql_connection.get_cusrosr()
+
+        # execute the INSERT statement
+        cur.execute(INSERT_SQL, (name))
+
+        # get the generated id back
+        self.data_collection_id = cur.fetchone()[0]
+
+        # commit the changes to the database
+        self.sql_connection.commit()
+
+        # close communication with the database
+        cur.close()
+
+    def upload_trigger(self, trigger):
+
+        INSERT_TRIGGER_SQL = """ 
+                            INSERT INTO 
+                                all_triggers(
+                                    path, 
+                                    box_min_x, 
+                                    box_min_y, 
+                                    box_max_x,
+                                    box_max_y, 
+                                    start_frame, 
+                                    end_frame, 
+                                    data_collection_id
+                                    time_stamp, 
+                                    ) 
+                                VALUES(%s, %s, %s, %s, %s, %s, %s, %s, clock_timestamp()) 
+                                RETURNING id
+                            """
+
+        # create a cursor
+        cur = self.sql_connection.cursor()
+
+        rect = trigger.bounding_rect
+        # execute the INSERT statement
+        cur.execute(
+            INSERT_TRIGGER_SQL,
+            (trigger.file, rect.min_x, rect.box_min_y, rect.max_x, rect.max_y,
+             trigger.frame_start, trigger.frame_end, self.collection_id))
+
+        # Get the trigger id
+        trigger_id = cur.fetchone()[0]
+
+        # commit the changes to the database
+        self.sql_connection.commit()
+
+        # close communication with the database
+        cur.close()
