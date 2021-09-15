@@ -1,6 +1,6 @@
 import psycopg2 as pg
 from typing import List
-from trigger import Trigger
+from dimscommon.trigger import Trigger
 import sys
 import numpy as np
 
