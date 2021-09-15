@@ -376,6 +376,8 @@ class DataCollection:
 
         SUCCES_MESSAGE = "Succes!"
 
+        self.additional_trigger_info = additional_trigger_info
+
         self.sql_connection = SqlConnection
 
         # create a cursor
@@ -431,7 +433,7 @@ class DataCollection:
         self.trigger_additional_props_table_name = f"additional_trigger_props_{self.data_collection_id}"
         CREATE_ADDITIONAL_TRIGGER_INFO_TABLE = f"""
                                                 CREATE TABLE {self.trigger_additional_props_table_name}
-                                                ({', '.join([f"{parameter} TEXT" for parameter in additional_trigger_info])})
+                                                ({', '.join([f"{parameter} TEXT" for parameter in self.additional_trigger_info])})
                                                 """
 
         try:
@@ -490,8 +492,10 @@ class DataCollection:
             print(f"Error executig:\n{e}")
 
         INSER_ADDITIONAL_TRIGGER_INFO = f"""
-                                        INSERT INTO {self.trigger_additional_props_table_name}(column names)
-                                        VALUES ()
+                                        INSERT INTO 
+                                            {self.trigger_additional_props_table_name}
+                                            ({self.additional_trigger_info})
+                                        VALUES ({', '.join([val for (key, val) in trigger.additional_data])})
                                         """
 
         try:
