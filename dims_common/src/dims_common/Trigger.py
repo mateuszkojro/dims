@@ -372,6 +372,9 @@ class DataCollection:
     def __init__(self, name: str, parameter_names: List[str],
                  parameter_values: List[str],
                  additional_trigger_info: List[str]) -> None:
+
+        SUCCES_MESSAGE = "Succes!"
+
         self.sql_connection = SqlConnection
 
         # create a cursor
@@ -381,9 +384,14 @@ class DataCollection:
                             data_collections(name, timestamp) 
                         VALUES(%s, clock_timestamp()) RETURNING id
                     """
-
-        # execute the INSERT statement
-        cur.execute(INSERT_SQL, (name))
+        try:
+            # execute the INSERT statement
+            print(f"Executing sql query:\n{INSERT_SQL}")
+            cur.execute(INSERT_SQL, (name))
+            print(SUCCES_MESSAGE)
+        except Exception as e:
+            print(f"Error running sql query:\n{e}")
+            sys.exit(1)
 
         # get the generated id back
         self.data_collection_id = cur.fetchone()[0]
@@ -395,27 +403,54 @@ class DataCollection:
                             CREATE TABLE {props_table_name}
                             ({trigger_field_type_pairs})
                             """
-        # execute the INSERT statement
-        cur.execute(CREATE_PROPS_TABLE, ())
+        try:
+            # execute the INSERT statement
+            print(f"Executing sql query:\n{CREATE_PROPS_TABLE}")
+            cur.execute(CREATE_PROPS_TABLE, ())
+            print(SUCCES_MESSAGE)
+        except Exception as e:
+            print(f"Error running sql query:\n{e}")
+            sys.exit(1)
 
         FILL_PROPS_TABLE = f"""
                             INSERT INTO {props_table_name}({','.join(parameter_names)})
                             VALUES(','.join{parameter_values})
                             """
-        cur.execute(FILL_PROPS_TABLE, ())
+
+        try:
+            print(f"Executing sql query:\n{FILL_PROPS_TABLE}")
+            cur.execute(FILL_PROPS_TABLE, ())
+            print(SUCCES_MESSAGE)
+        except Exception:
+            print(f"Error running sql query:\n{e}")
+            sys.exit(1)
 
         # ADITIONAL TRIGGER INFO
 
         trigger_additional_props_table_name = f"additional_trigger_props_{self.data_collection_id}"
         CREATE_ADDITIONAL_TRIGGER_INFO_TABLE = f"""
                                                 CREATE TABLE {trigger_additional_props_table_name}
-                                                ({', '.join([f"{parameter} TEXT" for parameter in parameter_names])})
+                                                ({', '.join([f"{parameter} TEXT" for parameter in additional_trigger_info])})
                                                 """
 
-        cur.execute(CREATE_ADDITIONAL_TRIGGER_INFO_TABLE, ())
+        try:
+            print(
+                f"Executing sql query:\n{CREATE_ADDITIONAL_TRIGGER_INFO_TABLE}"
+            )
+            cur.execute(CREATE_ADDITIONAL_TRIGGER_INFO_TABLE, ())
+            print(SUCCES_MESSAGE)
+        except Exception:
+            print(f"Error running sql query:\n{e}")
+            sys.exit(1)
 
-        # commit the changes to the database
-        self.sql_connection.commit()
+        try:
+            print("Commiting changes to db")
+            # commit the changes to the database
+            self.sql_connection.commit()
+            print(SUCCES_MESSAGE)
+        except Exception:
+            print(f"Error running sql query:\n{e}")
+            sys.exit(1)
 
         # close communication with the database
         cur.close()
