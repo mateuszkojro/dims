@@ -369,7 +369,8 @@ def spllit_stringify_dict(dictionary: dict, spliiter=','):
 
 
 class DataCollection:
-    def __init__(self, name: str, parameter_names: List[str],
+    def __init__(self, collection_name: str,
+                 collection_parameter_names: List[str],
                  parameter_values: List[str],
                  additional_trigger_info: List[str]) -> None:
 
@@ -387,7 +388,7 @@ class DataCollection:
         try:
             # execute the INSERT statement
             print(f"Executing sql query:\n{INSERT_SQL}")
-            cur.execute(INSERT_SQL, (name))
+            cur.execute(INSERT_SQL, collection_name)
             print(SUCCES_MESSAGE)
         except Exception as e:
             print(f"Error running sql query:\n{e}")
@@ -398,7 +399,7 @@ class DataCollection:
 
         props_table_name = f"props_collection_{self.data_collection_id}"
         trigger_field_type_pairs = ', '.join(
-            [f"{parameter} TEXT" for parameter in parameter_names])
+            [f"{parameter} TEXT" for parameter in collection_parameter_names])
         CREATE_PROPS_TABLE = f"""
                             CREATE TABLE {props_table_name}
                             ({trigger_field_type_pairs})
@@ -413,7 +414,7 @@ class DataCollection:
             sys.exit(1)
 
         FILL_PROPS_TABLE = f"""
-                            INSERT INTO {props_table_name}({','.join(parameter_names)})
+                            INSERT INTO {props_table_name}({','.join(collection_parameter_names)})
                             VALUES(','.join{parameter_values})
                             """
 
@@ -427,9 +428,9 @@ class DataCollection:
 
         # ADITIONAL TRIGGER INFO
 
-        trigger_additional_props_table_name = f"additional_trigger_props_{self.data_collection_id}"
+        self.trigger_additional_props_table_name = f"additional_trigger_props_{self.data_collection_id}"
         CREATE_ADDITIONAL_TRIGGER_INFO_TABLE = f"""
-                                                CREATE TABLE {trigger_additional_props_table_name}
+                                                CREATE TABLE {self.trigger_additional_props_table_name}
                                                 ({', '.join([f"{parameter} TEXT" for parameter in additional_trigger_info])})
                                                 """
 
@@ -479,10 +480,28 @@ class DataCollection:
 
         rect = trigger.bounding_rect
         # execute the INSERT statement
-        cur.execute(
-            INSERT_TRIGGER_SQL,
-            (trigger.file, rect.min_x, rect.box_min_y, rect.max_x, rect.max_y,
-             trigger.frame_start, trigger.frame_end, self.collection_id))
+        try:
+            print("Pushing trigger to db")
+            cur.execute(INSERT_TRIGGER_SQL,
+                        (trigger.file, rect.min_x, rect.box_min_y, rect.max_x,
+                         rect.max_y, trigger.frame_start, trigger.frame_end,
+                         self.collection_id))
+        except Exception as e:
+            print(f"Error executig:\n{e}")
+
+        INSER_ADDITIONAL_TRIGGER_INFO = f"""
+                                        INSERT INTO {self.trigger_additional_props_table_name}(column names)
+                                        VALUES ()
+                                        """
+
+        try:
+            print("Pushing additional trigger info to db")
+            cur.execute(INSER_ADDITIONAL_TRIGGER_INFO,
+                        (trigger.file, rect.min_x, rect.box_min_y, rect.max_x,
+                         rect.max_y, trigger.frame_start, trigger.frame_end,
+                         self.collection_id))
+        except Exception as e:
+            print(f"Error executig:\n{e}")
 
         # Get the trigger id
         trigger_id = cur.fetchone()[0]
