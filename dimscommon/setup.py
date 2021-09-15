@@ -4,7 +4,7 @@ import setuptools
 #     long_description = fh.read()
 
 setuptools.setup(
-    name="dims_common",
+    name="dimscommon",
     version="0.0.1",
     author="Mateusz Kojro",
     author_email="mateuszkojro@outlook.com",
@@ -22,6 +22,5 @@ setuptools.setup(
     ],
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
-    # packages=["dims_common"],
     python_requires=">=3.6",
 )
