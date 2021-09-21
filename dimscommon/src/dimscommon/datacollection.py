@@ -4,15 +4,16 @@ from dimscommon.trigger import Trigger
 import sys
 import numpy as np
 
+
 class SqlConnection:
     def __init__(self, **params) -> None:
-        if params is not None:
-            self.connection = pg.connect(params)
-        else:
-            self.connection = pg.connect(host="localhost",
-                                         database="dims_events",
-                                         user="admin",
-                                         password="pssd123")
+        # if params is not None:
+        #     self.connection = pg.connect(params)
+        # else:
+        self.connection = pg.connect(host="localhost",
+                                     database="dims_events",
+                                     user="admin",
+                                     password="pssd123")
 
     def get_cusrosr(self):
         """ Get the sql cursor - cursor needs to be closed by the caller """
@@ -23,6 +24,7 @@ class SqlConnection:
         self.connection.commit()
 
     def select(self, collumns, table, where=""):
+        raise NotImplemented
         """ Create select query on connection """
         SQL_QUERY = f""""
                     SELECT  path,
@@ -57,22 +59,24 @@ class SqlConnection:
                     INSERT INTO {table}
                     VALUES {values}
                     """
+        raise NotImplemented
 
     def __del__(self):
-        self.connection.close()
+        if self.connection:
+            self.connection.close()
 
 
 class DataCollection:
     def __init__(self, collection_name: str,
                  collection_parameter_names: List[str],
                  parameter_values: List[str],
-                 additional_trigger_info: List[str]) -> None:
+                 additional_trigger_info: List[str]) -> int:
 
         SUCCES_MESSAGE = "Succes!"
 
         self.additional_trigger_info = additional_trigger_info
 
-        self.sql_connection = SqlConnection
+        self.sql_connection = SqlConnection()
 
         # create a cursor
         cur = self.sql_connection.get_cusrosr()
@@ -84,7 +88,7 @@ class DataCollection:
         try:
             # execute the INSERT statement
             print(f"Executing sql query:\n{INSERT_SQL}")
-            cur.execute(INSERT_SQL, collection_name)
+            cur.execute(INSERT_SQL, (collection_name, ))
             print(SUCCES_MESSAGE)
         except Exception as e:
             print(f"Error running sql query:\n{e}")
@@ -93,64 +97,72 @@ class DataCollection:
         # get the generated id back
         self.data_collection_id = cur.fetchone()[0]
 
-        props_table_name = f"props_collection_{self.data_collection_id}"
-        trigger_field_type_pairs = ', '.join(
-            [f"{parameter} TEXT" for parameter in collection_parameter_names])
-        CREATE_PROPS_TABLE = f"""
-                            CREATE TABLE {props_table_name}
-                            ({trigger_field_type_pairs})
-                            """
-        try:
-            # execute the INSERT statement
-            print(f"Executing sql query:\n{CREATE_PROPS_TABLE}")
-            cur.execute(CREATE_PROPS_TABLE, ())
-            print(SUCCES_MESSAGE)
-        except Exception as e:
-            print(f"Error running sql query:\n{e}")
-            sys.exit(1)
+        if collection_parameter_names == [] or parameter_values == []:
+            print("No additional collection parameters - SKIPING TABLE INIT")
+        else:
+            props_table_name = f"props_collection_{self.data_collection_id}"
+            trigger_field_type_pairs = ', '.join(
+                [f"{parameter} TEXT" for parameter in collection_parameter_names])
+            CREATE_PROPS_TABLE = f"""
+                                CREATE TABLE {props_table_name}
+                                ({trigger_field_type_pairs})
+                                """
+            try:
+                # execute the INSERT statement
+                print(f"Executing sql query:\n{CREATE_PROPS_TABLE}")
+                cur.execute(CREATE_PROPS_TABLE, ())
+                print(SUCCES_MESSAGE)
+            except Exception as e:
+                print(f"Error running sql query:\n{e}")
+                sys.exit(1)
 
-        FILL_PROPS_TABLE = f"""
-                            INSERT INTO {props_table_name}({','.join(collection_parameter_names)})
-                            VALUES(','.join{parameter_values})
-                            """
+            FILL_PROPS_TABLE = f"""
+                                INSERT INTO {props_table_name}({','.join(collection_parameter_names)})
+                                VALUES({','.join([f"'{value}'" for value in parameter_values])})
+                                """
 
-        try:
-            print(f"Executing sql query:\n{FILL_PROPS_TABLE}")
-            cur.execute(FILL_PROPS_TABLE, ())
-            print(SUCCES_MESSAGE)
-        except Exception:
-            print(f"Error running sql query:\n{e}")
-            sys.exit(1)
+            try:
+                print(f"Executing sql query:\n{FILL_PROPS_TABLE}")
+                cur.execute(FILL_PROPS_TABLE, ())
+                print(SUCCES_MESSAGE)
+            except Exception as e:
+                print(f"Error running sql query:\n{e}")
+                sys.exit(1)
 
         # ADITIONAL TRIGGER INFO
 
-        self.trigger_additional_props_table_name = f"additional_trigger_props_{self.data_collection_id}"
-        CREATE_ADDITIONAL_TRIGGER_INFO_TABLE = f"""
-                                                CREATE TABLE {self.trigger_additional_props_table_name}
-                                                ({', '.join([f"{parameter} TEXT" for parameter in self.additional_trigger_info])})
-                                                """
+        if additional_trigger_info == []:
+            print("No additional trigger parameters - SKIPING TABLE INIT")
+        else:
+            self.trigger_additional_props_table_name = f"additional_trigger_props_{self.data_collection_id}"
+            CREATE_ADDITIONAL_TRIGGER_INFO_TABLE = f"""
+                                                    CREATE TABLE {self.trigger_additional_props_table_name}
+                                                    ({', '.join([f"{parameter} TEXT" for parameter in self.additional_trigger_info])})
+                                                    """
 
-        try:
-            print(
-                f"Executing sql query:\n{CREATE_ADDITIONAL_TRIGGER_INFO_TABLE}"
-            )
-            cur.execute(CREATE_ADDITIONAL_TRIGGER_INFO_TABLE, ())
-            print(SUCCES_MESSAGE)
-        except Exception:
-            print(f"Error running sql query:\n{e}")
-            sys.exit(1)
+            try:
+                print(
+                    f"Executing sql query:\n{CREATE_ADDITIONAL_TRIGGER_INFO_TABLE}"
+                )
+                cur.execute(CREATE_ADDITIONAL_TRIGGER_INFO_TABLE, ())
+                print(SUCCES_MESSAGE)
+            except Exception as e:
+                print(f"Error running sql query:\n{e}")
+                sys.exit(1)
 
         try:
             print("Commiting changes to db")
             # commit the changes to the database
             self.sql_connection.commit()
             print(SUCCES_MESSAGE)
-        except Exception:
+        except Exception as e:
             print(f"Error running sql query:\n{e}")
             sys.exit(1)
 
         # close communication with the database
         cur.close()
+
+        return
 
     def upload_trigger(self, trigger: Trigger):
 
@@ -164,7 +176,7 @@ class DataCollection:
                                     box_max_y, 
                                     start_frame, 
                                     end_frame, 
-                                    data_collection_id
+                                    data_collection_id,
                                     time_stamp, 
                                     ) 
                                 VALUES(%s, %s, %s, %s, %s, %s, %s, %s, clock_timestamp()) 
@@ -194,10 +206,10 @@ class DataCollection:
 
         try:
             print("Pushing additional trigger info to db")
-            cur.execute(INSER_ADDITIONAL_TRIGGER_INFO,
-                        (trigger.file, rect.min_x, rect.box_min_y, rect.max_x,
-                         rect.max_y, trigger.frame_start, trigger.frame_end,
-                         self.collection_id))
+            cur.execute(
+                INSER_ADDITIONAL_TRIGGER_INFO,
+                (trigger.file, rect.min_x, rect.min_y, rect.max_x, rect.max_y,
+                 trigger.frame_start, trigger.frame_end, self.collection_id))
         except Exception as e:
             print(f"Error executig:\n{e}")
 
@@ -209,3 +221,5 @@ class DataCollection:
 
         # close communication with the database
         cur.close()
+
+        return trigger_id

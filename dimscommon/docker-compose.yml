@@ -1,0 +1,27 @@
+version: "3.0"
+   
+services:
+  db:
+    image: postgres
+    ports:
+      - 5432:5432
+    volumes:
+      # - ./data/db:/var/lib/postgresql/data
+      - ./docker-config/:/docker-entrypoint-initdb.d/
+    environment:
+      - POSTGRES_DB=dims_events
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=pssd123
+  
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 9080:8080
+    depends_on:
+      - db
+  
+  # tests:
+  #   build: ./
+  #   depends_on:
+  #     - db
