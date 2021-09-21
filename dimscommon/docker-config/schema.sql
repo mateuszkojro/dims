@@ -19,6 +19,10 @@ ALTER TABLE "data_collections"
 ADD "id" smallserial NOT NULL,
     ADD PRIMARY KEY ("id");
 
+ALTER TABLE "all_triggers"
+ADD "id" smallserial NOT NULL,
+ADD PRIMARY KEY ("id");
+COMMENT ON TABLE "all_triggers" IS '';
 
 
 COMMENT ON TABLE "data_collections" IS '';

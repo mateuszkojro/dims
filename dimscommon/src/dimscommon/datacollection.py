@@ -15,7 +15,7 @@ class SqlConnection:
                                      user="admin",
                                      password="pssd123")
 
-    def get_cusrosr(self):
+    def get_cursor(self):
         """ Get the sql cursor - cursor needs to be closed by the caller """
         return self.connection.cursor()
 
@@ -79,7 +79,7 @@ class DataCollection:
         self.sql_connection = SqlConnection()
 
         # create a cursor
-        cur = self.sql_connection.get_cusrosr()
+        cur = self.sql_connection.get_cursor()
 
         INSERT_SQL = """ INSERT INTO 
                             data_collections(name, timestamp) 
@@ -101,8 +101,9 @@ class DataCollection:
             print("No additional collection parameters - SKIPING TABLE INIT")
         else:
             props_table_name = f"props_collection_{self.data_collection_id}"
-            trigger_field_type_pairs = ', '.join(
-                [f"{parameter} TEXT" for parameter in collection_parameter_names])
+            trigger_field_type_pairs = ', '.join([
+                f"{parameter} TEXT" for parameter in collection_parameter_names
+            ])
             CREATE_PROPS_TABLE = f"""
                                 CREATE TABLE {props_table_name}
                                 ({trigger_field_type_pairs})
@@ -179,39 +180,65 @@ class DataCollection:
                                     data_collection_id,
                                     time_stamp, 
                                     ) 
-                                VALUES(%s, %s, %s, %s, %s, %s, %s, %s, clock_timestamp()) 
+                                VALUES(%s, %s, %s, %s, %s, %s, %s, %s, clock_timestamp())
                                 RETURNING id
                             """
 
         # create a cursor
-        cur = self.sql_connection.cursor()
+        cur = self.sql_connection.get_cursor()
 
         rect = trigger.bounding_rect
+        INSERT_TRIGGER_SQL = f""" 
+                            INSERT INTO 
+                                all_triggers(
+                                    path, 
+                                    box_min_x, 
+                                    box_min_y, 
+                                    box_max_x,
+                                    box_max_y, 
+                                    start_frame, 
+                                    end_frame, 
+                                    data_collection_id,
+                                    time_stamp
+                                    ) 
+                                VALUES('{trigger.file}', 
+                                        {rect.min_x}, 
+                                        {rect.min_y}, 
+                                        {rect.max_x}, 
+                                        {rect.max_y}, 
+                                        {trigger.start_frame}, 
+                                        {trigger.end_frame}, 
+                                        {self.data_collection_id}, 
+                                        clock_timestamp())
+                                RETURNING id
+                            """
         # execute the INSERT statement
         try:
             print("Pushing trigger to db")
-            cur.execute(INSERT_TRIGGER_SQL,
-                        (trigger.file, rect.min_x, rect.box_min_y, rect.max_x,
-                         rect.max_y, trigger.frame_start, trigger.frame_end,
-                         self.collection_id))
+            print(INSERT_TRIGGER_SQL)
+            # cur.execute(INSERT_TRIGGER_SQL,
+            #             (trigger.file, rect.min_x, rect.min_y, rect.max_x,
+            #              rect.max_y, trigger.start_frame, trigger.end_frame,
+            #              self.data_collection_id))
+            cur.execute(INSERT_TRIGGER_SQL)
         except Exception as e:
             print(f"Error executig:\n{e}")
 
-        INSER_ADDITIONAL_TRIGGER_INFO = f"""
-                                        INSERT INTO 
-                                            {self.trigger_additional_props_table_name}
-                                            ({self.additional_trigger_info})
-                                        VALUES ({', '.join([val for (key, val) in trigger.additional_data])})
-                                        """
-
-        try:
-            print("Pushing additional trigger info to db")
-            cur.execute(
-                INSER_ADDITIONAL_TRIGGER_INFO,
-                (trigger.file, rect.min_x, rect.min_y, rect.max_x, rect.max_y,
-                 trigger.frame_start, trigger.frame_end, self.collection_id))
-        except Exception as e:
-            print(f"Error executig:\n{e}")
+        if trigger.additional_data is not None:
+            INSER_ADDITIONAL_TRIGGER_INFO = f"""
+                                            INSERT INTO 
+                                                {self.trigger_additional_props_table_name}
+                                                ({self.additional_trigger_info})
+                                            VALUES ({', '.join([val for (key, val) in trigger.additional_data])})
+                                            """
+            try:
+                print("Pushing additional trigger info to db")
+                cur.execute(INSER_ADDITIONAL_TRIGGER_INFO,
+                            (trigger.file, rect.min_x, rect.min_y, rect.max_x,
+                             rect.max_y, trigger.frame_start,
+                             trigger.frame_end, self.collection_id))
+            except Exception as e:
+                print(f"Error executig:\n{e}")
 
         # Get the trigger id
         trigger_id = cur.fetchone()[0]
