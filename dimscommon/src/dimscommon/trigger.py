@@ -1,10 +1,10 @@
 import pathlib
+import sys
 from collections import namedtuple
+from configparser import ConfigParser
 from typing import List
 
 import cv2
-import sys
-from configparser import ConfigParser
 import cython
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
