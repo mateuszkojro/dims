@@ -309,7 +309,8 @@ def spllit_stringify_dict(dictionary: dict, spliiter=','):
     return keys, values
 
 
-def get_triggers_from_db(trigger_ids: List[int]):
+def get_triggers_by_ids(trigger_ids: List[int]) -> List[Trigger]:
+    """ Connect to db and get events with ids on @trigger_ids """
     import psycopg2 as pg
 
     connection = pg.connect(host="localhost",
@@ -320,6 +321,42 @@ def get_triggers_from_db(trigger_ids: List[int]):
 
     cursor.execute(
         f"SELECT * FROM all_triggers WHERE id in ({','.join([str(id)  for id in trigger_ids ])})"
+    )
+
+    response = cursor.fetchall()
+
+    triggers = []
+
+    for row in response:
+        triggers.append(
+            create_trigger_flat(
+                file=row[0],
+                box_min_x=int(row[1]),
+                box_min_y=int(row[2]),
+                box_max_x=int(row[3]),
+                box_max_y=int(row[4]),
+                start_frame=int(row[5]),
+                end_frame=int(row[6]),
+                additional_data=
+                None  # FIXME: We should get that info from the other table
+            ))
+
+    connection.close()
+    return triggers
+
+
+def get_triggers_by_collection_id(collection_id: int) -> List[Trigger]:
+    """ Connect to db and get events with ids on @trigger_ids """
+    import psycopg2 as pg
+
+    connection = pg.connect(host="localhost",
+                            database="dims_events",
+                            user="admin",
+                            password="pssd123")
+    cursor = connection.cursor()
+
+    cursor.execute(
+        f"SELECT * FROM all_triggers WHERE data_collection_id in ({collection_id})"
     )
 
     response = cursor.fetchall()
