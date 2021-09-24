@@ -1,8 +1,10 @@
-import psycopg2 as pg
-from typing import List
-from dimscommon.trigger import Trigger
 import sys
+from typing import List
+
 import numpy as np
+import psycopg2 as pg
+
+from dimscommon.trigger import Trigger
 
 
 class SqlConnection:
@@ -55,6 +57,7 @@ class SqlConnection:
 
     def insert(self, table, values):
         """ Insert into db """
+        raise NotImplementedError
         SQL_QUERY = f"""
                     INSERT INTO {table}
                     VALUES {values}
@@ -163,8 +166,6 @@ class DataCollection:
         # close communication with the database
         cur.close()
 
-        return
-
     def upload_trigger(self, trigger: Trigger):
 
         INSERT_TRIGGER_SQL = """ 
@@ -223,25 +224,27 @@ class DataCollection:
             cur.execute(INSERT_TRIGGER_SQL)
         except Exception as e:
             print(f"Error executig:\n{e}")
+            exit(1)
+
+        # Get the trigger id
+        trigger_id = cur.fetchone()[0]
 
         if trigger.additional_data is not None:
             INSER_ADDITIONAL_TRIGGER_INFO = f"""
                                             INSERT INTO 
                                                 {self.trigger_additional_props_table_name}
-                                                ({self.additional_trigger_info})
-                                            VALUES ({', '.join([val for (key, val) in trigger.additional_data])})
+                                            VALUES ({', '.join([str(trigger.additional_data[key]) for key in self.additional_trigger_info])});
                                             """
+            print(INSER_ADDITIONAL_TRIGGER_INFO)
             try:
                 print("Pushing additional trigger info to db")
                 cur.execute(INSER_ADDITIONAL_TRIGGER_INFO,
                             (trigger.file, rect.min_x, rect.min_y, rect.max_x,
-                             rect.max_y, trigger.frame_start,
-                             trigger.frame_end, self.collection_id))
+                             rect.max_y, trigger.start_frame,
+                             trigger.end_frame, self.data_collection_id))
             except Exception as e:
                 print(f"Error executig:\n{e}")
-
-        # Get the trigger id
-        trigger_id = cur.fetchone()[0]
+                exit(1)
 
         # commit the changes to the database
         self.sql_connection.commit()

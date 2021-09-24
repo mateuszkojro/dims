@@ -27,6 +27,22 @@ class TestDatacollection(unittest.TestCase):
                                 box_max_y=4,
                                 additional_data=None))
 
+    def test_add_trigger_with_props(self):
+        conn = dc.DataCollection("Test collection", [], [],
+                                 ["speed", "linearity"])
+        conn.upload_trigger(
+            create_trigger_flat(file="filename",
+                                start_frame=1,
+                                end_frame=2,
+                                box_min_x=1,
+                                box_min_y=2,
+                                box_max_x=3,
+                                box_max_y=4,
+                                additional_data={
+                                    "speed": 12,
+                                    "linearity": 0.9
+                                }))
+
 
 class TestTrigger(unittest.TestCase):
     pass
