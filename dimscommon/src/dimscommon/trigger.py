@@ -10,7 +10,6 @@ import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
 """
 Object representing a 2 dimentional vector
 """
@@ -308,3 +307,38 @@ def spllit_stringify_dict(dictionary: dict, spliiter=','):
         keys += spliiter + key
         values += spliiter + value
     return keys, values
+
+
+def get_triggers_from_db(trigger_ids: List[int]):
+    import psycopg2 as pg
+
+    connection = pg.connect(host="localhost",
+                            database="dims_events",
+                            user="admin",
+                            password="pssd123")
+    cursor = connection.cursor()
+
+    cursor.execute(
+        f"SELECT * FROM all_triggers WHERE id in ({','.join([str(id)  for id in trigger_ids ])})"
+    )
+
+    response = cursor.fetchall()
+
+    triggers = []
+
+    for row in response:
+        triggers.append(
+            create_trigger_flat(
+                file=row[0],
+                box_min_x=int(row[1]),
+                box_min_y=int(row[2]),
+                box_max_x=int(row[3]),
+                box_max_y=int(row[4]),
+                start_frame=int(row[5]),
+                end_frame=int(row[6]),
+                additional_data=
+                None  # FIXME: We should get that info from the other table
+            ))
+
+    connection.close()
+    return triggers
