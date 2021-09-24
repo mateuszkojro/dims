@@ -26,22 +26,22 @@ class SqlConnection:
         self.connection.commit()
 
     def select(self, collumns, table, where=""):
-        raise NotImplemented
         """ Create select query on connection """
-        SQL_QUERY = f""""
-                    SELECT  path,
-                            start_frame,
-                            end_frame,
-                            box_min_x,
-                            box_min_y,
-                            box_max_x,
-                            box_max_y
-                            {collumns}
-                    FROM
-                            {table}
-                    WHERE
-                            {where}
-                    """
+        raise NotImplemented
+        SQL_QUERY = (f"\n"
+                     f"SELECT"
+                     f" path,\n"
+                     f" start_frame,\n"
+                     f" end_frame,\n"
+                     f" box_min_x,\n"
+                     f" box_min_y,\n"
+                     f" box_max_x,\n"
+                     f" box_max_y\n"
+                     f"{collumns}\n"
+                     f"FROM\n"
+                     f" {table}\n"
+                     f"WHERE\n"
+                     f" {where}\n")
         cursor = self.connection.cursor()
         cursor.execute(SQL_QUERY)
 
@@ -73,7 +73,7 @@ class DataCollection:
     def __init__(self, collection_name: str,
                  collection_parameter_names: List[str],
                  parameter_values: List[str],
-                 additional_trigger_info: List[str]) -> int:
+                 additional_trigger_info: List[str]):
 
         SUCCES_MESSAGE = "Succes!"
 
@@ -91,7 +91,7 @@ class DataCollection:
         try:
             # execute the INSERT statement
             print(f"Executing sql query:\n{INSERT_SQL}")
-            cur.execute(INSERT_SQL, (collection_name, ))
+            cur.execute(INSERT_SQL, (collection_name,))
             print(SUCCES_MESSAGE)
         except Exception as e:
             print(f"Error running sql query:\n{e}")
@@ -135,7 +135,7 @@ class DataCollection:
 
         # ADITIONAL TRIGGER INFO
 
-        if additional_trigger_info == []:
+        if not additional_trigger_info:
             print("No additional trigger parameters - SKIPING TABLE INIT")
         else:
             self.trigger_additional_props_table_name = f"additional_trigger_props_{self.data_collection_id}"
@@ -155,7 +155,7 @@ class DataCollection:
                 sys.exit(1)
 
         try:
-            print("Commiting changes to db")
+            print("Committing changes to db")
             # commit the changes to the database
             self.sql_connection.commit()
             print(SUCCES_MESSAGE)
@@ -168,59 +168,51 @@ class DataCollection:
 
     def upload_trigger(self, trigger: Trigger):
 
-        INSERT_TRIGGER_SQL = """ 
-                            INSERT INTO 
-                                all_triggers(
-                                    path, 
-                                    box_min_x, 
-                                    box_min_y, 
-                                    box_max_x,
-                                    box_max_y, 
-                                    start_frame, 
-                                    end_frame, 
-                                    data_collection_id,
-                                    time_stamp, 
-                                    ) 
-                                VALUES(%s, %s, %s, %s, %s, %s, %s, %s, clock_timestamp())
-                                RETURNING id
-                            """
+        INSERT_TRIGGER_SQL = ("INSERT INTO \n"
+                              " all_triggers(\n"
+                              " path, \n"
+                              " box_min_x, \n"
+                              " box_min_y, \n"
+                              " box_max_x,\n"
+                              " box_max_y, \n"
+                              " start_frame, \n"
+                              " end_frame, \n"
+                              " data_collection_id,\n"
+                              " time_stamp\n"
+                              " ) \n"
+                              "VALUES(%s, %s, %s, %s, %s, %s, %s, %s, clock_timestamp())\n"
+                              "RETURNING id\n")
 
         # create a cursor
         cur = self.sql_connection.get_cursor()
 
         rect = trigger.bounding_rect
-        INSERT_TRIGGER_SQL = f""" 
-                            INSERT INTO 
-                                all_triggers(
-                                    path, 
-                                    box_min_x, 
-                                    box_min_y, 
-                                    box_max_x,
-                                    box_max_y, 
-                                    start_frame, 
-                                    end_frame, 
-                                    data_collection_id,
-                                    time_stamp
-                                    ) 
-                                VALUES('{trigger.file}', 
-                                        {rect.min_x}, 
-                                        {rect.min_y}, 
-                                        {rect.max_x}, 
-                                        {rect.max_y}, 
-                                        {trigger.start_frame}, 
-                                        {trigger.end_frame}, 
-                                        {self.data_collection_id}, 
-                                        clock_timestamp())
-                                RETURNING id
-                            """
+        INSERT_TRIGGER_SQL = (f"INSERT INTO \n"
+                              f"    all_triggers(\n"
+                              f"    path, \n"
+                              f"    box_min_x, \n"
+                              f"    box_min_y, \n"
+                              f"    box_max_x,\n"
+                              f"    box_max_y, \n"
+                              f"    start_frame, \n"
+                              f"    end_frame, \n"
+                              f"    data_collection_id,\n"
+                              f"    time_stamp\n"
+                              f"    )\n"
+                              f"VALUES('{trigger.file}', \n"
+                              f"    {rect.min_x}, \n"
+                              f"    {rect.min_y}, \n"
+                              f"    {rect.max_x}, \n"
+                              f"    {rect.max_y}, \n"
+                              f"    {trigger.start_frame}, \n"
+                              f"    {trigger.end_frame}, \n"
+                              f"    {self.data_collection_id}, \n"
+                              f"    clock_timestamp())\n"
+                              f"RETURNING id\n")
         # execute the INSERT statement
         try:
             print("Pushing trigger to db")
             print(INSERT_TRIGGER_SQL)
-            # cur.execute(INSERT_TRIGGER_SQL,
-            #             (trigger.file, rect.min_x, rect.min_y, rect.max_x,
-            #              rect.max_y, trigger.start_frame, trigger.end_frame,
-            #              self.data_collection_id))
             cur.execute(INSERT_TRIGGER_SQL)
         except Exception as e:
             print(f"Error executig:\n{e}")
@@ -230,11 +222,10 @@ class DataCollection:
         trigger_id = cur.fetchone()[0]
 
         if trigger.additional_data is not None:
-            INSER_ADDITIONAL_TRIGGER_INFO = f"""
-                                            INSERT INTO 
-                                                {self.trigger_additional_props_table_name}
-                                            VALUES ({', '.join([str(trigger.additional_data[key]) for key in self.additional_trigger_info])});
-                                            """
+            INSER_ADDITIONAL_TRIGGER_INFO = (f"INSERT INTO\n"
+                                             f" {self.trigger_additional_props_table_name}\n"
+                                             f"VALUES ({', '.join([str(trigger.additional_data[key]) for key in self.additional_trigger_info])}); \n")
+
             print(INSER_ADDITIONAL_TRIGGER_INFO)
             try:
                 print("Pushing additional trigger info to db")
