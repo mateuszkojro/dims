@@ -87,10 +87,10 @@ def generate_gif(trigger_id):
                 start=trigger.start_frame,
                 stop=trigger.end_frame,
             )
-        
+
         for frame in frames:
             frame = tr.mark_rect(frame, trigger.bounding_rect)
-        
+
         tr.animate(
             frame_list=frames,
             interactive=False,
@@ -231,13 +231,13 @@ def get_config():
     configuration.read("config.ini")
     return configuration
 
-
+label_studio_url = None
 def get_label_studio_url():
-    return "http://localhost/label/api/"
+    return label_studio_url # "http://localhost/label/api/"
 
-
+hostname = None
 def get_host_name():
-    return "http://localhost:8090/"
+    return hostname # "http://localhost:8090/"
 
 
 def label_studio_headers():
@@ -305,6 +305,8 @@ if __name__ == '__main__':
                                      user=config.get("DB", "user"),
                                      password=config.get("DB", "password"),
                                      host=config.get("DB", "host"))
+    label_studio_url = config.get("main", "label_stduio_url")
+    hostname = config.get("main", "hostname")
     video_files_directory = Path(config.get("main", "video_files_directory"))
     cached_gifs_directory = Path(config.get("main", "cached_gifs_directory"))
     read_cache(cached_gifs_directory)
