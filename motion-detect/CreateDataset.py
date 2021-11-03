@@ -6,7 +6,12 @@ import imutils
 import sys
 import multiprocessing as mp
 import random
+import os
 import numpy as np
+import subprocess
+
+from dimscommon.trigger import upload_trigger
+from dimscommon.trigger import create_datacollection
 
 import utils
 from FileCrawler import StopCrawl, recursive_file_list
@@ -16,6 +21,30 @@ import CustomAlgorithm as ca
 
 # pyximport.install(pyimport=True)
 
+def remove_v2(frame):
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    h_original, w_original = frame.shape
+    parts = []
+    size_x = 50
+    size_y = 50
+
+    parts = frame.reshape((-1, h_original // 100, 50))
+
+    n, h, w = parts.shape
+
+    for idx, part in enumerate(parts):
+        colors = part.flatten()
+        dev = np.std(colors)
+        counts = np.bincount(colors)
+        most_freq = np.argmax(counts)
+
+        def filter(color):
+            return color if color > most_freq + dev * 3 else 0
+
+        parts[idx] = np.fromiter((filter(c) for c in colors),
+                            dtype=int).reshape(part.shape)
+
+    return parts.reshape((h_original, w_original))
 
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)  # Deactivate negative indexing.
@@ -42,7 +71,8 @@ def analyze(path, debug=False):
 
             resized_frame = ca.resize_frame(frame)
 
-            preprocessed = ca.preprocess_frame(resized_frame)
+            background_removed = remove_v2(resized_frame)
+            preprocessed = ca.preprocess_frame(background_removed)
 
             # if the first frame is None, initialize it
             if reference_frame is None:
@@ -59,11 +89,14 @@ def analyze(path, debug=False):
                 triggers += new_triggers
 
             if debug:
-                ca.annotate_frame(resized_frame, events)
 
-                utils.draw_grid(resized_frame)
+                ca.annotate_frame(background_removed, events)
 
-                preview = imutils.resize(resized_frame, width=1500)
+
+
+                utils.draw_grid(background_removed)
+
+                preview = imutils.resize(background_removed, width=1500)
                 cv2.imshow("Preview", preview)
                 # Get the pressed key
                 key = cv2.waitKey(1) & 0xFF
@@ -88,7 +121,7 @@ def analyze(path, debug=False):
                     triggers += new_triggers
                 break
 
-        frame_time = (time.monotonic()-start_time)/frame_number
+        frame_time = (time.monotonic() - start_time) / frame_number
         frame_rate = 60 / frame_time
         info(f"Framerate {frame_rate:.2f} fps")
 
@@ -141,6 +174,21 @@ if __name__ == '__main__':
         for file in file_list:
             all_triggers += analyze(file)
 
+    print("Pushing collected triggers to db, please wait")
+
+    url = "http://localhost:8080/"
+    collection_id = create_datacollection(url, "Test collection", [], [],
+                                              [])
+
+    def send_trigger(trigger_list):
+        for trigger in trigger_list:
+            trigger = trigger.to_common_trigger()
+            upload_trigger(trigger, collection_id, url)
+        return trigger_list
+
+    with mp.Pool(20) as p:
+        p.map(send_trigger, all_triggers)
+
     utils.save(all_triggers, out_path)
 
     print()
@@ -149,3 +197,5 @@ if __name__ == '__main__':
     print("-" * 30)
     print()
     print("\a")
+    if os.name == "posix":
+        proc = subprocess.Popen(["notify-send" ,"Analysys complete!"])
