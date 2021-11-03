@@ -1,6 +1,14 @@
 version: "3.0"
    
 services:
+  # server:
+    # build: .
+    # ports:
+    #   - 8080:8080
+    # depends_on: 
+    #   - db
+    #   - label
+
   db:
     image: postgres
     ports:
@@ -56,6 +64,7 @@ services:
     volumes:
       - ./data/label-studio:/label-studio/data
       - ./data/gifs:/data/gifs
+    # network_mode: "host"
     depends_on:
       - db
     
