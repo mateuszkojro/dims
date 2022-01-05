@@ -8,14 +8,13 @@ import skimage.measure
 
 from utils import Vec2, get_frames, combine_frames, resize_frame
 
-from Trigger import Trigger, get_section
+from dimscommon.trigger import Trigger, create_trigger, get_section
 
 from log import err
 
 
 # @dataclass(frozen=True)
 class TriggerInfo:
-    event: Event
     length: cython.int
     filename: str
     start_frame: cython.int
@@ -167,13 +166,14 @@ class TriggerInfo:
 
     def to_common_trigger(self):
 
-        return Trigger(
-            filename=self.filename,
+        return create_trigger(
+            file=self.filename,
             start_frame=self.start_frame,
             end_frame=self.end_frame,
-            bounding_rect=self.bounding_box,
-            section=self.get_section(),
-            line_fit=self.line_fit,
-            length=None,
-            time_block=self.start_frame % 10
+            rect=self.bounding_box,
+            additional_data={}
+            # section=self.get_section(),
+            # line_fit=self.line_fit,
+            # length=None,
+            # time_block=self.start_frame % 10
         )

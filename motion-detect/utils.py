@@ -9,7 +9,7 @@ from log import *
 
 from collections import namedtuple
 
-from Trigger import Trigger
+from dimscommon.trigger import Trigger
 
 Vec2 = namedtuple('Vec2', ['x', 'y'])
 
@@ -145,3 +145,6 @@ def save(all_triggers, out_name="out"):
 
     common_df.to_csv("test.csv")
     df.to_csv(out_name + ".csv")
+
+    common_numpy = np.array(common_df.to_numpy())
+    np.save("common.npy", common_numpy)

@@ -21,6 +21,12 @@ import CustomAlgorithm as ca
 
 # pyximport.install(pyimport=True)
 
+@cython.cfunc
+def filter(color, most_freq, dev):
+    return color if color > most_freq + dev * 3 else 0
+
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing.
 def remove_v2(frame):
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     h_original, w_original = frame.shape
@@ -38,10 +44,8 @@ def remove_v2(frame):
         counts = np.bincount(colors)
         most_freq = np.argmax(counts)
 
-        def filter(color):
-            return color if color > most_freq + dev * 3 else 0
 
-        parts[idx] = np.fromiter((filter(c) for c in colors),
+        parts[idx] = np.fromiter((filter(c, most_freq, dev) for c in colors),
                             dtype=int).reshape(part.shape)
 
     return parts.reshape((h_original, w_original))
@@ -176,9 +180,8 @@ if __name__ == '__main__':
 
     print("Pushing collected triggers to db, please wait")
 
-    url = "http://localhost:8080/"
-    collection_id = create_datacollection(url, "Test collection", [], [],
-                                              [])
+    url = "http://localhost/server/api/"
+    collection_id = create_datacollection(url, "Testing collection", [], [], [])
 
     def send_trigger(trigger_list):
         for trigger in trigger_list:

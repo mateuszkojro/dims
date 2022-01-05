@@ -7,11 +7,12 @@ import matplotlib.animation as animation
 import math
 
 import cv2
-from typing import Tuple, List, Union
+from typing import Collection, Tuple, List, Union
 import matplotlib.pyplot as plt
 # from functools import cache
 import imutils
 import numpy as np
+
 
 from TriggerInfo import TriggerInfo
 from utils import Vec2, Rect, get_frames, combine_frames, resize_frame
@@ -229,7 +230,8 @@ def save_event(event: Cluster) -> TriggerInfo:
 @cython.wraparound(False)
 @cython.ccall
 def preprocess_frame(frame, sigma=(3, 3)):
-    grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    grayscale = frame
+    # grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     grayscale = cv2.GaussianBlur(grayscale, sigma, 0)
     return grayscale
 
@@ -243,7 +245,8 @@ def get_contours(frame, reference_frame):
     thresh = cv2.dilate(thresh, None, iterations=2)
 
     contours = cv2.findContours(
-        thresh, cv2.RETR_EXTERNAL,  # Here was tresh.copy()
+        thresh,
+        cv2.RETR_EXTERNAL,  # Here was tresh.copy()
         cv2.CHAIN_APPROX_SIMPLE)
 
     contours = imutils.grab_contours(contours)
@@ -280,7 +283,11 @@ def extract_events(contours,
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.ccall
-def update_events(event_list, frame_number, drop_inactive_time=3):
+def update_events(event_list,
+                  frame_number,
+                  drop_inactive_time=3,
+                  collection_id=None,
+                  url=None):
     triggers = []
     for event in event_list:
         # remove events not active for more than 5 frames
@@ -288,7 +295,9 @@ def update_events(event_list, frame_number, drop_inactive_time=3):
 
             # If event is ok we save it to the list of triggers
             if is_good_trigger(event):
-                triggers.append(save_event(event))
+                trigger = save_event(event)
+                triggers.append(trigger)
+                # upload_trigger(trigger, collection_id, url)
 
             event_list.remove(event)
 
@@ -344,10 +353,8 @@ def annotate_frame(frame,
 
         if draw_box:
             min_x, min_y, max_x, max_y = event.bounding_rect()
-            cv2.rectangle(frame,
-                          (int(min_x), int(min_y)),
-                          (int(max_x), int(max_y)),
-                          (0, 255, 0), 2)
+            cv2.rectangle(frame, (int(min_x), int(min_y)),
+                          (int(max_x), int(max_y)), (0, 255, 0), 2)
 
         if draw_confidence:
             pass

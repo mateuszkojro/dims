@@ -59,7 +59,7 @@ if __name__ == '__main__':
     output_folder = sys.argv[2]
 
     df = pd.read_csv(dataset_file)
-    triggers = read_df(df)
+    triggers = read_df(df, "/media/vrabel/data_wdg10_vchgc3yp/DIMS/")
 
-    with mp.Pool(32) as p:
+    with mp.Pool(5) as p:
         p.map(aplyer, triggers)
